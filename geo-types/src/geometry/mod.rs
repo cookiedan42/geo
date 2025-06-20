@@ -9,6 +9,7 @@ pub(crate) mod point;
 pub(crate) mod polygon;
 pub(crate) mod rect;
 pub(crate) mod triangle;
+pub(crate) mod traits;
 
 // re-export all the geometry variants:
 #[allow(deprecated)]
@@ -23,6 +24,8 @@ pub use point::Point;
 pub use polygon::Polygon;
 pub use rect::Rect;
 pub use triangle::Triangle;
+pub use traits::{MultiPartGeom,SinglePartGeom};
+pub use traits::{ZeroDimensionGeom,OneDimensionGeom,TwoDimensionGeom};
 
 use crate::{CoordNum, Error};
 

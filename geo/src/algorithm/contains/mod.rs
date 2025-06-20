@@ -77,7 +77,6 @@ macro_rules! impl_contains_from_relate_0d {
 pub(crate) use impl_contains_from_relate_0d;
 
 // self is a 1d geometry (Line, LineString, MultiLineString)
-// target must not be a Multi-part geometry
 macro_rules! impl_contains_from_relate_1d {
     ($for:ty,  [$($target:ty),*]) => {
         $(
@@ -86,6 +85,8 @@ macro_rules! impl_contains_from_relate_1d {
                 T: GeoFloat,
                 $for: Contains<LineString<T>>,
                 $for: Contains<Coord<T>>,
+                $for: OneDimensionGeom<T>,
+                $target: SinglePartGeom<T>,
             {
                 fn contains(&self, target: &$target) -> bool {
                     use crate::dimensions::HasDimensions;
@@ -119,7 +120,9 @@ macro_rules! impl_contains_from_relate_1d_multi {
             where
                 T: GeoFloat,
                 $for: Contains<MultiPoint<T>>,
-
+                $for: OneDimensionGeom<T>,
+                $target: MultiPartGeom<T>,
+                $target: crate::dimensions::HasDimensions,
             {
                 fn contains(&self, target: &$target) -> bool {
                     use crate::dimensions::HasDimensions;
@@ -135,7 +138,7 @@ macro_rules! impl_contains_from_relate_1d_multi {
                         // simplify into contains(MultiPoint<T>)
                         // because we might have multiple degenerate 0d geometries
                         Dimensions::ZeroDimensional => {
-                            let coords:Vec<Coord<T>> =target.coords_iter().collect();
+                            let coords:Vec<Coord<T>> = target.coords_iter().collect();
                             let pts:Vec<Point<T>> = coords.iter().map(|c| Point::from(*c)).collect();
                             let mp = MultiPoint::new(pts);
                             self.contains(&mp)
