@@ -75,7 +75,6 @@ fn criterion_benchmark(c: &mut Criterion) {
         .filter(|x|triangle.contains(x))
         .collect();
 
-        println!("{:?}",pts.len());
         bencher.iter(|| {
             criterion::black_box(oriented_bounding_box(&pts));
         });

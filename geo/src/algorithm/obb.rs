@@ -34,28 +34,28 @@ where T: CoordFloat + GeoNum + GeoFloat {
     }
     let mp: MultiPoint<T> = MultiPoint::from_iter(points.iter().map(|x|Point::new(x.x,x.y)));
 
-    let(meanx,meany) = mp.iter().fold((T::zero(),T::zero()),|acc,p|{
+    let(mean_x,mean_y) = mp.iter().fold((T::zero(),T::zero()),|acc,p|{
         (acc.0 + p.x(),acc.1 + p.y())
     });
     let l = T::from(l).unwrap();
-    let meanx = meanx / l;
-    let meany = meany / l;
+    let mean_x = mean_x / l;
+    let mean_y = mean_y / l;
 
     let data:Vec<[T;2]> = mp.iter().map(|p|[p.x(),p.y()]).collect();
-    let cov = calculate_2d_covariance_matrix(&data);
+    let cov = calculate_2d_covariance_matrix(mean_x,mean_y,&data);
     let evec = calculate_eigen_decomposition_col0(cov).unwrap();
 
     let theta_pc1 = get_eigen_angle(evec[0],evec[1]).to_degrees();
 
     let mp2 = mp
-        .translate(-meanx,-meany)
+        // .translate(-mean_x,-mean_y)
         .rotate_around_point(-theta_pc1,Point::new(T::zero(),T::zero()));
 
     let bbox: Polygon<T> = mp2.bounding_rect().unwrap().into();
 
     let bbox: Polygon<T> = bbox.rotate_around_point(theta_pc1,Point::new(T::zero(),T::zero()));
 
-    let bbox = bbox.translate(meanx, meany);
+    // let bbox = bbox.translate(mean_x, mean_y);
 
     Some(bbox)
 }
@@ -67,34 +67,22 @@ fn get_eigen_angle<T>(v0:T,v1:T) -> T where T:CoordFloat{
 
 
 
-fn calculate_2d_covariance_matrix<T>(data: &Vec<[T; 2]>) -> [[T; 2]; 2] where T: CoordFloat{
+fn calculate_2d_covariance_matrix<T>(mean_x:T,mean_y:T,data: &Vec<[T; 2]>) -> [[T; 2]; 2] where T: CoordFloat{
 
     let n = data.len();
     
-    // Calculate means
-    let mut mean_x = T::zero();
-    let mut mean_y = T::zero();
-    
-    for point in data {
-        mean_x = mean_x + point[0];
-        mean_y = mean_y + point[1];
-    }
-    mean_x = mean_x / T::from(n).unwrap();
-    mean_y = mean_y / T::from(n).unwrap();
-
     // Calculate covariances
-    let mut cov_xx = T::zero();
-    let mut cov_xy = T::zero();
-    let mut cov_yy = T::zero();
+    let (cov_xx,cov_xy,cov_yy) = data.iter()
+        .fold((T::zero(),T::zero(),T::zero()),|acc,p|{
+            let diff_x = p[0] - mean_x;
+            let diff_y = p[1] - mean_y;
+            
+            let cov_xx = acc.0 + diff_x * diff_x;
+            let cov_xy = acc.1 + diff_x * diff_y;
+            let cov_yy = acc.2 + diff_y * diff_y;
 
-    for point in data {
-        let diff_x = point[0] - mean_x;
-        let diff_y = point[1] - mean_y;
-        
-        cov_xx = cov_xx + diff_x * diff_x;
-        cov_xy = cov_xy + diff_x * diff_y;
-        cov_yy = cov_yy + diff_y * diff_y;
-    }
+            (cov_xx,cov_xy,cov_yy)
+        });
 
     let n_minus_1 = T::from(n - 1).unwrap();
     let covariance = [
@@ -147,7 +135,8 @@ fn calculate_eigen_decomposition_col0<T>(matrix: [[T; 2]; 2]) -> Option<[T; 2]> 
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{MultiPoint,point};
+    use crate::{point, Area, MultiPoint};
+    use crate::algorithm::bool_ops::BooleanOps;
     use crate::MinimumRotatedRect;
     #[test]
     fn test() {
@@ -159,11 +148,10 @@ mod test {
 
 
         
-        let bbox = oriented_bounding_box(&mp.0.iter().map(|x|x.0).collect::<Vec<Coord<f64>>>());
-        let rect = mp.minimum_rotated_rect();
+        let bbox = oriented_bounding_box(&mp.0.iter().map(|x|x.0).collect::<Vec<Coord<f64>>>()).unwrap();
+        let rect = mp.minimum_rotated_rect().unwrap();
 
-        assert_eq!(bbox,rect);
-
+        assert!(bbox.xor(&rect).unsigned_area().abs() < f64::from(1e-9));
     }
 
 
