@@ -47,12 +47,12 @@ fn criterion_benchmark(c: &mut Criterion) {
        c.bench_function("rect filled  Triangle", |bencher| {
         let triangle = Triangle::new(
             coord!(x: 0., y: 0.),
-            coord!(x: 10., y: 0.),
-            coord!(x: 5., y: 10.),
+            coord!(x: 100., y: 0.),
+            coord!(x: 50., y: 100.),
         );
 
 
-        let pts = (0..1000).zip(0..1000)
+        let pts = (0..1000_00).zip(0..1000_00)
         .map(|(x,y)| {Point::new(x as f64 / 1000., y as f64/1000.)})
         .filter(|x|triangle.contains(x));
 
@@ -66,14 +66,16 @@ fn criterion_benchmark(c: &mut Criterion) {
      c.bench_function("obb filled Triangle", |bencher| {
          let triangle = Triangle::new(
             coord!(x: 0., y: 0.),
-            coord!(x: 10., y: 0.),
-            coord!(x: 5., y: 10.),
+            coord!(x: 100., y: 0.),
+            coord!(x: 50., y: 100.),
         );
 
-        let pts: Vec<geo::Coord> = (0..1000).zip(0..1000)
+        let pts: Vec<geo::Coord> = (0..1000_00).zip(0..1000_00)
         .map(|(x,y)| coord!{x:x as f64 / 1000., y: y as f64/1000.})
         .filter(|x|triangle.contains(x))
         .collect();
+
+        println!("{:?}",pts.len());
         bencher.iter(|| {
             criterion::black_box(oriented_bounding_box(&pts));
         });
