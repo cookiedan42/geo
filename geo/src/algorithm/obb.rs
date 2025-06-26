@@ -106,7 +106,7 @@ fn calculate_2d_covariance_matrix<T>(data: &Vec<[T; 2]>) -> [[T; 2]; 2] where T:
 }
 
 
-fn calculate_eigen_decomposition_col0<T>(matrix: [[T; 2]; 2]) -> Option<([T; 2])> where T:CoordFloat {
+fn calculate_eigen_decomposition_col0<T>(matrix: [[T; 2]; 2]) -> Option<[T; 2]> where T:CoordFloat {
     // For a 2x2 matrix [[a, b], [c, d]]
     let a = matrix[0][0];
     let b = matrix[0][1];
