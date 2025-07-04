@@ -328,3 +328,6 @@ pub use rhumb::{RhumbBearing, RhumbDestination, RhumbDistance, RhumbIntermediate
 
 pub mod validation;
 pub use validation::Validation;
+
+pub mod obb;
+pub use obb::oriented_bounding_box;

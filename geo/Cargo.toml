@@ -126,3 +126,7 @@ harness = false
 [[bench]]
 name = "stitch"
 harness = false
+
+[[bench]]
+name = "minimum_rotated_rectangle"
+harness = false
