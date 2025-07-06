@@ -1,6 +1,6 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 use geo::intersects::Intersects;
-use geo::MultiPolygon;
+use geo::{MultiPolygon, Triangle};
 
 fn multi_polygon_intersection(c: &mut Criterion) {
     let plot_polygons: MultiPolygon = geo_test_fixtures::nl_plots_wgs84();
@@ -145,7 +145,7 @@ fn point_triangle_intersection(c: &mut Criterion) {
 }
 
 fn linestring_poly_intersection(c: &mut Criterion) {
-    use geo::{coord, line_string, LineString, Polygon};
+    use geo::{coord, line_string, LineString, Polygon, Rect};
     c.bench_function("LineString above Polygon", |bencher| {
         let ls = line_string![
             coord! {x:0., y:1.},
@@ -165,36 +165,59 @@ fn linestring_poly_intersection(c: &mut Criterion) {
             assert!(!criterion::black_box(&ls).intersects(criterion::black_box(&poly)));
         });
     });
-    c.bench_function("Best case ", |bencher| {
+    c.bench_function("LineString above Triangle", |bencher| {
         let ls = line_string![
-            coord! {x:0., y:0.},
-            coord! {x:5., y:5.},
+            coord! {x:0., y:1.},
+            coord! {x:5., y:6.},
             coord! {x:10., y:1.}
         ];
-        let poly = Polygon::new(
-            line_string![
-                coord! {x:0., y:0.},
-                coord! {x:5., y:4.},
-                coord! {x:10., y:0.}
-            ],
-            vec![],
+        let poly = Triangle::new(
+            coord! {x:0., y:0.},
+            coord! {x:5., y:4.},
+            coord! {x:10., y:0.},
         );
 
         bencher.iter(|| {
-            assert!(criterion::black_box(&ls).intersects(criterion::black_box(&poly)));
+            assert!(!criterion::black_box(&ls).intersects(criterion::black_box(&poly)));
         });
     });
+    c.bench_function("LineString above Rectangle", |bencher| {
+        let ls = line_string![
+            coord! {x:-1., y:-1.},
+            coord! {x:-1., y:11.},
+            coord! {x:11., y:11.}
+        ];
+        let poly = Rect::new(coord! {x:0., y:0.}, coord! {x:10., y:10.});
+
+        bencher.iter(|| {
+            assert!(!criterion::black_box(&ls).intersects(criterion::black_box(&poly)));
+        });
+    });
+
     c.bench_function("long disjoint ", |bencher| {
         let ls = LineString::from_iter((0..1000).map(|x| coord! {x:x as f64, y:x as f64}));
         let ln = (0..1000).map(|x| coord! {x:x as f64, y:(x-1) as f64});
         let k = vec![coord! {x:-5. as f64,y:-5. as f64}].into_iter();
         let ext = ln.chain(k);
 
-        // let ext:Vec<Coord<f64>> = .chain(ln)collect();
         let poly = Polygon::new(LineString::from_iter(ext), vec![]);
 
         bencher.iter(|| {
             assert!(!criterion::black_box(&ls).intersects(criterion::black_box(&poly)));
+        });
+    });
+
+    c.bench_function("ls within poly ", |bencher| {
+        let ls = line_string![
+            coord! {x:1., y:1.},
+            coord! {x:5., y:6.},
+            coord! {x:9., y:1.}
+        ];
+
+        let poly: Polygon = Rect::new(coord! {x:0., y:0.}, coord! {x:10., y:10.}).into();
+
+        bencher.iter(|| {
+            assert!(criterion::black_box(&ls).intersects(criterion::black_box(&poly)));
         });
     });
 }

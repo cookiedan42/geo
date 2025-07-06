@@ -42,6 +42,11 @@ where
 
 symmetric_intersects_impl!(LineString<T>, MultiLineString<T>);
 
+// blanket_intersects_linestring!(Polygon<T>);
+// blanket_intersects_linestring!(MultiPolygon<T>);
+// blanket_intersects_linestring!(Rect<T>);
+// blanket_intersects_linestring!(Triangle<T>);
+
 impl<T> Intersects<Polygon<T>> for LineString<T>
 where
     T: GeoNum,
@@ -56,9 +61,10 @@ where
             return false;
         }
         // if no lines intersections, then linestring is either disjoint or within the polygon
-        self.lines()
-            .any(|l| rhs.lines_iter().any(|other| l.intersects(&other)))
-            || self.0[0].intersects(rhs)
+        self.0[0].intersects(rhs)
+            || self
+                .lines()
+                .any(|l| rhs.lines_iter().any(|other| l.intersects(&other)))
     }
 }
 
@@ -91,9 +97,10 @@ where
             return false;
         }
         // if no lines intersections, then linestring is either disjoint or within the polygon
-        self.lines()
-            .any(|l| rhs.lines_iter().any(|other| l.intersects(&other)))
-            || self.0[0].intersects(rhs)
+        self.0[0].intersects(rhs)
+            || self
+                .lines()
+                .any(|l| rhs.lines_iter().any(|other| l.intersects(&other)))
     }
 }
 
@@ -111,9 +118,10 @@ where
             return false;
         }
         // if no lines intersections, then linestring is either disjoint or within the polygon
-        self.lines()
-            .any(|l| rhs.lines_iter().any(|other| l.intersects(&other)))
-            || self.0[0].intersects(rhs)
+        self.0[0].intersects(rhs)
+            || self
+                .lines()
+                .any(|l| rhs.lines_iter().any(|other| l.intersects(&other)))
     }
 }
 
@@ -140,7 +148,7 @@ macro_rules! blanket_intersects_multilinestring {
 }
 
 blanket_intersects_multilinestring!(Coord<T>);
-symmetric_intersects_impl!(MultiLineString<T>, LineString<T>);
+blanket_intersects_multilinestring!(LineString<T>);
 blanket_intersects_multilinestring!(Line<T>);
 blanket_intersects_multilinestring!(Point<T>);
 blanket_intersects_multilinestring!(MultiPoint<T>);
