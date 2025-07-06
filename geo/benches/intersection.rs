@@ -144,6 +144,61 @@ fn point_triangle_intersection(c: &mut Criterion) {
     });
 }
 
+fn linestring_poly_intersection(c: &mut Criterion) {
+    use geo::{coord, line_string, LineString, Polygon};
+    c.bench_function("LineString above Polygon", |bencher| {
+        let ls = line_string![
+            coord! {x:0., y:1.},
+            coord! {x:5., y:6.},
+            coord! {x:10., y:1.}
+        ];
+        let poly = Polygon::new(
+            line_string![
+                coord! {x:0., y:0.},
+                coord! {x:5., y:4.},
+                coord! {x:10., y:0.}
+            ],
+            vec![],
+        );
+
+        bencher.iter(|| {
+            assert!(!criterion::black_box(&ls).intersects(criterion::black_box(&poly)));
+        });
+    });
+    c.bench_function("Best case ", |bencher| {
+        let ls = line_string![
+            coord! {x:0., y:0.},
+            coord! {x:5., y:5.},
+            coord! {x:10., y:1.}
+        ];
+        let poly = Polygon::new(
+            line_string![
+                coord! {x:0., y:0.},
+                coord! {x:5., y:4.},
+                coord! {x:10., y:0.}
+            ],
+            vec![],
+        );
+
+        bencher.iter(|| {
+            assert!(criterion::black_box(&ls).intersects(criterion::black_box(&poly)));
+        });
+    });
+    c.bench_function("long disjoint ", |bencher| {
+        let ls = LineString::from_iter((0..1000).map(|x| coord! {x:x as f64, y:x as f64}));
+        let ln = (0..1000).map(|x| coord! {x:x as f64, y:(x-1) as f64});
+        let k = vec![coord! {x:-5. as f64,y:-5. as f64}].into_iter();
+        let ext = ln.chain(k);
+
+        // let ext:Vec<Coord<f64>> = .chain(ln)collect();
+        let poly = Polygon::new(LineString::from_iter(ext), vec![]);
+
+        bencher.iter(|| {
+            assert!(!criterion::black_box(&ls).intersects(criterion::black_box(&poly)));
+        });
+    });
+}
+
 criterion_group! {
     name = bench_multi_polygons;
     config = Criterion::default().sample_size(10);
@@ -161,9 +216,12 @@ criterion_group! {
     targets = point_triangle_intersection
 }
 
+criterion_group! { bench_linestring_poly,linestring_poly_intersection}
+
 criterion_main!(
-    bench_multi_polygons,
-    bench_rects,
-    bench_point_rect,
-    bench_point_triangle
+    // bench_multi_polygons,
+    // bench_rects,
+    // bench_point_rect,
+    // bench_point_triangle,
+    bench_linestring_poly,
 );
