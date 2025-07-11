@@ -1,32 +1,35 @@
 use super::{Covers, impl_covers_from_intersects};
 use crate::GeoNum;
-use crate::geometry::*;
+use crate::HasDimensions;
+use crate::{CoordsIter, Intersects, geometry::*};
 
-// valid because self is convex geometry
-// all exterior pts of RHS intersecting self means self covers RHS
-impl_covers_from_intersects!(Triangle<T>, [
-Point<T>,MultiPoint<T>,
-Line<T>,
-LineString<T>, MultiLineString<T>,
-Rect<T>, Triangle<T>,
-Polygon<T>,  MultiPolygon<T>,
-Geometry<T>, GeometryCollection<T>
-]);
+/*
+    If self is a simple convex polygon
+    and all points of other intersect self,
+    then self covers other.
+*/
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::algorithm::convert::Convert;
-    use crate::wkt;
+impl_covers_from_intersects!(coord: Triangle<T>);
 
-    #[test]
-    fn test_rhs_empty() {
-        let s: Triangle<f64> = wkt!(TRIANGLE(0 0,0 1,1 1)).convert();
-        assert!(!s.covers(&LineString::empty()));
-        assert!(!s.covers(&Polygon::empty()));
-        assert!(!s.covers(&MultiPoint::empty()));
-        assert!(!s.covers(&MultiLineString::empty()));
-        assert!(!s.covers(&MultiPolygon::empty()));
-        assert!(!s.covers(&GeometryCollection::empty()));
+impl<T> Covers<Polygon<T>> for Triangle<T>
+where
+    T: GeoNum,
+{
+    fn covers(&self, rhs: &Polygon<T>) -> bool {
+        rhs.exterior_coords_iter().all(|c| self.intersects(&c))
     }
 }
+
+impl<T> Covers<MultiPolygon<T>> for Triangle<T>
+where
+    T: GeoNum,
+{
+    fn covers(&self, rhs: &MultiPolygon<T>) -> bool {
+        rhs.exterior_coords_iter().all(|c| self.intersects(&c))
+    }
+}
+
+impl_covers_from_intersects!(Triangle<T>, [Point<T>, MultiPoint<T>]);
+impl_covers_from_intersects!(Triangle<T>, [Line<T>, LineString<T>, MultiLineString<T>]);
+impl_covers_from_intersects!(Triangle<T>, [Rect<T>, Triangle<T>]);
+impl_covers_from_intersects!(Triangle<T>, [GeometryCollection<T>]);

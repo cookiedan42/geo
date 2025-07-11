@@ -1,9 +1,9 @@
-/// Checks if every point in `rhs` lies inside `self`.
-/// (i.e. intersects the interior or boundary of) `self`.
-/// Equivalently, tests that no point of `other` lies outside (in the exterior of) `self`
-/// In other words, the [DE-9IM] intersection matrix
-/// of `(rhs, self)` matches one of the following patterns:
-/// `[T*****FF*], [*T****FF*], [***T**FF*], [****T*FF*]`
+/// Checks if `rhs` is completely contained within `self`.
+/// More formally, the interior of `rhs` has non-empty
+/// (set-theoretic) intersection but neither the interior,
+/// nor the boundary of `rhs` intersects the exterior of
+/// `self`. In other words, the [DE-9IM] intersection matrix
+/// of `(rhs, self)` is `T*F**F***`.
 ///
 /// [DE-9IM]: https://en.wikipedia.org/wiki/DE-9IM
 ///
@@ -32,18 +32,10 @@
 /// // Point in Polygon
 /// assert!(polygon.covers(&point!(x: 1., y: 1.)));
 /// ```
-///
-/// # Performance Note
-///
-/// Much of this trait is currently implemented by delegating to the [`Relate`](crate::algorithm::Relate) trait - see
-/// [`IntersectionMatrix::is_covers`](crate::algorithm::relate::IntersectionMatrix::is_covers);
-/// However, [`Covers`] may be faster for checking if geometries are covered by `Point`, `Line`, `Rect` and `Triangle`
-///
 pub trait Covers<Rhs = Self> {
     fn covers(&self, rhs: &Rhs) -> bool;
 }
 
-pub(crate) mod coord;
 pub(crate) mod line_string;
 pub(crate) mod point;
 pub(crate) mod polygon;
@@ -72,51 +64,35 @@ macro_rules! impl_covers_from_relate {
 }
 pub(crate) use impl_covers_from_relate;
 
-// returns true if all coords of rhs intersects with self
-// always valid if self is Point, Line or Convex Polygon (Rect/Triangle)
-// always valid if other is Point or MultiPoint
 macro_rules! impl_covers_from_intersects {
-
-    (Coord<T>,  [$($target:ty),*]) => {
-
-        $(
-            impl<T> Covers<$target> for Coord<T>
-            where
-                T: GeoNum,
-                Self: $crate::algorithm::Intersects<Coord<T>>,
-            {
-                fn covers(&self, target: &$target) -> bool {
-                    use $crate::CoordsIter;
-                    use $crate::algorithm::Intersects;
-                    use $crate::algorithm::HasDimensions;
-                    if HasDimensions::is_empty(target) {
-                        return false;
-                    }
-                    target.exterior_coords_iter().all(|pt| self.intersects(&pt))
-                }
-            }
-        )*
-    };
-
     ($for:ty,  [$($target:ty),*]) => {
-
         $(
             impl<T> Covers<$target> for $for
             where
                 T: GeoNum,
-                Self: $crate::algorithm::Intersects<Coord<T>>,
+                Self: Intersects<Coord<T>> + HasDimensions,
+                $target:CoordsIter<Scalar=T> + HasDimensions,
+
             {
                 fn covers(&self, target: &$target) -> bool {
-                    use $crate::CoordsIter;
-                    use $crate::algorithm::Intersects;
-                    use $crate::algorithm::HasDimensions;
-                    if HasDimensions::is_empty(self) || HasDimensions::is_empty(target){
-                        return false;
-                    }
-                    target.exterior_coords_iter().all(|pt| self.intersects(&pt))
+                    !self.is_empty()
+                    && !target.is_empty()
+                    && target.coords_iter().all(|pt| self.intersects(&pt))
                 }
             }
         )*
+    };
+    (coord: $for:ty) => {
+            impl<T> Covers<Coord<T>> for $for
+            where
+                T: GeoNum,
+                Self: Intersects<Coord<T>> + HasDimensions,
+            {
+                fn covers(&self, target: &Coord<T>) -> bool {
+                    !self.is_empty()
+                    && self.intersects(target)
+                }
+            }
     };
 }
 pub(crate) use impl_covers_from_intersects;

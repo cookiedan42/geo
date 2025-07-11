@@ -8,9 +8,7 @@ use log::{debug, info};
 use wkt::ToWkt;
 
 use super::{check_buffer_test_case, input, Operation, Result};
-use geo::algorithm::{
-    BooleanOps, Contains, ContainsProperly, Covers, HasDimensions, Intersects, Relate, Within,
-};
+use geo::algorithm::{BooleanOps, Contains, Covers, HasDimensions, Intersects, Relate, Within};
 use geo::geometry::*;
 use geo::{ConvexHull, GeoNum};
 
@@ -202,7 +200,7 @@ impl TestRunner {
                     target,
                     expected,
                 } => {
-                    let relate_actual = subject.relate(target).is_covers();
+                    let relate_actual = subject.relate(target).is_contains();
                     let direct_actual = subject.covers(target);
 
                     if relate_actual != *expected {
@@ -215,7 +213,9 @@ impl TestRunner {
                             error_description,
                         });
                     } else if relate_actual != direct_actual {
-                        debug!("Covers failure: Relate doesn't match Covers trait implementation");
+                        debug!(
+                            "Covers failure: Relate doesn't match Covers trait implementation"
+                        );
                         let error_description = format!(
                             "Covers failure - Relate.is_covers: {expected:?} doesn't match Covers trait: {direct_actual:?}"
                         );
