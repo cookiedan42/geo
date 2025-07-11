@@ -1,17 +1,18 @@
 use super::{impl_covers_from_relate, Covers};
+use crate::covers::impl_covers_from_intersects;
 use crate::geometry::*;
+use crate::{CoordsIter, Intersects};
 use crate::{GeoFloat, GeoNum};
 
-
-impl<T,G> Covers<G> for Coord<T>
-where T: GeoFloat,
-    Point<T>: Covers<G>
-    {
-        fn covers(&self, rhs: &G) -> bool {
-            Point::new(self.x, self.y).covers(rhs)
-        }
+impl<T, G> Covers<G> for Coord<T>
+where
+    T: GeoFloat,
+    Point<T>: Covers<G>,
+{
+    fn covers(&self, rhs: &G) -> bool {
+        Point::new(self.x, self.y).covers(rhs)
     }
-
+}
 
 impl<T> Covers<Coord<T>> for Point<T>
 where
@@ -32,12 +33,13 @@ where
     }
 }
 
-impl_covers_from_relate!(Point<T>, [ MultiPoint<T>]);
-impl_covers_from_relate!(Point<T>, [Line<T>]);
-impl_covers_from_relate!(Point<T>, [ LineString<T>,  MultiLineString<T>]);
-impl_covers_from_relate!(Point<T>, [ Rect<T>, Triangle<T>]);
-impl_covers_from_relate!(Point<T>, [Polygon<T>,  MultiPolygon<T>]);
-impl_covers_from_relate!(Point<T>, [Geometry<T>, GeometryCollection<T>]);
+impl_covers_from_intersects!(Point<T>, [MultiPoint<T>]);
+
+impl_covers_from_intersects!(Point<T>, [Line<T>]);
+impl_covers_from_intersects!(Point<T>, [ LineString<T>,  MultiLineString<T>]);
+impl_covers_from_intersects!(Point<T>, [ Rect<T>, Triangle<T>]);
+impl_covers_from_intersects!(Point<T>, [Polygon<T>,  MultiPolygon<T>]);
+impl_covers_from_intersects!(Point<T>, [Geometry<T>, GeometryCollection<T>]);
 
 impl<T> Covers<Coord<T>> for MultiPoint<T>
 where
@@ -48,7 +50,8 @@ where
         self.covers(&Point::new(rhs.x, rhs.y))
     }
 }
-impl_covers_from_relate!(MultiPoint<T>, [Point<T>, MultiPoint<T>]);
+
+impl_covers_from_intersects!(MultiPoint<T>, [Point<T>, MultiPoint<T>]);
 impl_covers_from_relate!(MultiPoint<T>, [Line<T>]);
 impl_covers_from_relate!(MultiPoint<T>, [ LineString<T>,  MultiLineString<T>]);
 impl_covers_from_relate!(MultiPoint<T>, [ Rect<T>, Triangle<T>]);

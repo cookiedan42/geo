@@ -37,8 +37,8 @@ pub trait Covers<Rhs = Self> {
 }
 
 pub(crate) mod line_string;
-pub(crate)mod point;
-pub(crate)mod polygon;
+pub(crate) mod point;
+pub(crate) mod polygon;
 
 pub(crate) mod line;
 pub(crate) mod rect;
@@ -64,8 +64,7 @@ macro_rules! impl_covers_from_relate {
 }
 pub(crate) use impl_covers_from_relate;
 
-
-macro_rules! impl_covers_convex_poly {
+macro_rules! impl_covers_from_intersects {
     ($for:ty,  [$($target:ty),*]) => {
         $(
             impl<T> Covers<$target> for $for
@@ -80,7 +79,7 @@ macro_rules! impl_covers_convex_poly {
         )*
     };
 }
-pub(crate) use impl_covers_convex_poly;
+pub(crate) use impl_covers_from_intersects;
 
 macro_rules! impl_covers_geometry_for {
     ($geom_type: ty) => {
