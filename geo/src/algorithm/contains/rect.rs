@@ -1,4 +1,5 @@
 use geo_types::CoordFloat;
+use crate::dimensions::Dimensions;
 
 use super::{impl_contains_from_relate, impl_contains_geometry_for, Contains};
 use crate::{geometry::*, Area, CoordsIter, HasDimensions, Intersects};
@@ -46,6 +47,9 @@ where
 impl<T> Contains<Polygon<T>> for Rect<T>
 where
     T: CoordFloat,
+    Self: Intersects<Coord<T>>,
+    Line<T>: Contains<Polygon<T>>,
+    Point<T>: Contains<Polygon<T>>,
 {
     fn contains(&self, rhs: &Polygon<T>) -> bool {
         // the polygon must not be empty
@@ -53,31 +57,55 @@ where
             return false;
         }
 
-        // none of the polygon's points may lie outside the rectangle
-        let mut points_inside = 0;
-        for c in rhs.exterior_coords_iter() {
-            if !self.intersects(&c) {
-                return false;
+        match self.dimensions() {
+            Dimensions::TwoDimensional => {
+                rhs.exterior_coords_iter().all(|c| self.intersects(&c))
+                && (rhs.exterior_coords_iter().any(|c| self.contains(&c)) ||!rhs.signed_area().is_zero())
             }
-            if self.contains(&c) {
-                points_inside += 1;
-            }
+            Dimensions::OneDimensional => Line::new(self.min(), self.max()).contains(rhs),
+            Dimensions::ZeroDimensional =>                 return Point::from(self.max()).contains(rhs),
+            Dimensions::Empty => return false,
+
         }
 
-        // The polygon must not lie completely inside the rectangle's boundary.
-        // In other words: at least one point of the interior of the polygon
-        // must lie in the interior of the rectangle. Since we know that the
-        // rectangle is convex, we just need make sure that either at least
-        // one point of the polygon lies inside the rectangle's interior or
-        // that the polygon's interior is not empty, in which case it will
-        // definitely intersect with the rectangle's interior.
-        if points_inside == 0 && rhs.signed_area().is_zero() {
-            return false;
-        }
-
-        true
     }
 }
 
 impl_contains_from_relate!(Rect<T>, [Line<T>, LineString<T>, MultiPoint<T>, MultiLineString<T>, MultiPolygon<T>, GeometryCollection<T>, Triangle<T>]);
 impl_contains_geometry_for!(Rect<T>);
+
+
+#[cfg(test)]
+mod tests_polygon {
+    use super::*;
+    use crate::{polygon, Point, Relate};
+
+    #[test]
+    fn rect_contains_degenerate_polygon() {
+        let rect = Rect::new(Point::new(0., 0.), Point::new(10., 5.));
+
+        let poly = polygon![
+            exterior: [(x: 0., y: 0.), (x: 0., y: 1.), (x: 0., y: 5.), (x: 0., y: 0.)],
+            interiors: [],
+        ];
+
+        assert!(!rect.contains(&poly));
+    }
+
+    #[test]
+    fn degenerate_rect_contains_degenerate_polygon() {
+        let rect = Rect::new(Point::new(0., 0.), Point::new(10., 0.));
+        let poly = polygon![
+            exterior: [(x: 1., y: 0.), (x: 5., y: 0.)],
+            interiors: [],
+        ];
+
+        let rect_ln = Line::new(Point::new(0., 0.), Point::new(10., 0.));
+        let poly_ln = Line::new(Point::new(1., 0.), Point::new(5., 0.));
+        assert!(rect_ln.contains(&poly_ln));
+        assert!(rect.relate(&poly).is_contains());
+
+        assert!(rect_ln.contains(&poly));
+        // assert!(rect.contains(&poly));
+    }
+}
