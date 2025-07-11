@@ -106,6 +106,6 @@ mod tests_polygon {
         assert!(rect.relate(&poly).is_contains());
 
         assert!(rect_ln.contains(&poly));
-        // assert!(rect.contains(&poly));
+        assert!(rect.contains(&poly));
     }
 }
