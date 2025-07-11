@@ -1,5 +1,5 @@
-use super::{impl_covers_from_relate, Covers};
-use crate::geometry::*;
+use super::{impl_covers_from_intersects, impl_covers_from_relate, Covers};
+use crate::{geometry::*, CoordsIter, Intersects};
 use crate::{GeoFloat, GeoNum};
 
 impl<T> Covers<Coord<T>> for LineString<T>
@@ -11,7 +11,7 @@ where
         self.covers(&Point::new(rhs.x, rhs.y))
     }
 }
-impl_covers_from_relate!(LineString<T>, [Point<T>, MultiPoint<T>]);
+impl_covers_from_intersects!(LineString<T>, [Point<T>, MultiPoint<T>]);
 impl_covers_from_relate!(LineString<T>, [Line<T>]);
 impl_covers_from_relate!(LineString<T>, [ LineString<T>,  MultiLineString<T>]);
 impl_covers_from_relate!(LineString<T>, [ Rect<T>, Triangle<T>]);
@@ -27,7 +27,7 @@ where
         self.covers(&Point::new(rhs.x, rhs.y))
     }
 }
-impl_covers_from_relate!(MultiLineString<T>, [Point<T>, MultiPoint<T>]);
+impl_covers_from_intersects!(MultiLineString<T>, [Point<T>, MultiPoint<T>]);
 impl_covers_from_relate!(MultiLineString<T>, [Line<T>]);
 impl_covers_from_relate!(MultiLineString<T>, [ LineString<T>,  MultiLineString<T>]);
 impl_covers_from_relate!(MultiLineString<T>, [ Rect<T>, Triangle<T>]);
