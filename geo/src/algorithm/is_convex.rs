@@ -1,5 +1,5 @@
-use crate::kernels::*;
-use crate::{Coord, GeoNum, LineString};
+use crate::{kernels::*, CoordsIter, HasDimensions};
+use crate::{Coord, GeoNum, LineString, Polygon};
 
 /// Predicates to test the convexity of a [ `LineString` ].
 /// A closed `LineString` is said to be _convex_ if it
@@ -114,7 +114,7 @@ impl<T: GeoNum> IsConvex for LineString<T> {
         allow_collinear: bool,
         specific_orientation: Option<Orientation>,
     ) -> Option<Orientation> {
-        if !self.is_closed() || self.0.is_empty() {
+        if !self.is_closed() || self.0.is_empty() || is_self_intersecting(&self.0) {
             None
         } else {
             is_convex_shaped(&self.0[1..], allow_collinear, specific_orientation)
@@ -122,9 +122,84 @@ impl<T: GeoNum> IsConvex for LineString<T> {
     }
 
     fn is_collinear(&self) -> bool {
-        self.0.is_empty()
-            || is_convex_shaped(&self.0[1..], true, Some(Orientation::Collinear)).is_some()
+        self.coords_count() < 3
+            || self.coords_iter().collect::<Vec<_>>().windows(3).all(|w| {
+                let a = w[0];
+                let b = w[1];
+                let c = w[2];
+                T::Ker::orient2d(a, b, c) == Orientation::Collinear
+            })
     }
+}
+
+impl<T: GeoNum> IsConvex for Polygon<T> {
+    fn convex_orientation(
+        &self,
+        allow_collinear: bool,
+        specific_orientation: Option<Orientation>,
+    ) -> Option<Orientation> {
+        // cannot have holes
+        if !self.interiors().is_empty() {
+            return None;
+        }
+
+        // exterior must not cross itself
+        if is_self_intersecting(&self.exterior().0) {
+            return None;
+        }
+
+        self.exterior()
+            .convex_orientation(allow_collinear, specific_orientation)
+    }
+
+    fn is_collinear(&self) -> bool {
+        self.coords_count() < 3
+            || self.coords_iter().collect::<Vec<_>>().windows(3).all(|w| {
+                let a = w[0];
+                let b = w[1];
+                let c = w[2];
+                T::Ker::orient2d(a, b, c) == Orientation::Collinear
+            })
+    }
+}
+
+#[derive(PartialEq)]
+enum OrientationQuadrant {
+    First,
+    Second,
+    Third,
+    Fourth,
+}
+
+/// Test if the linestring is self-intersecting
+/// Returns true if the linestring is self-intersecting  
+/// required because star polygons should not be considered convex
+fn is_self_intersecting<T: GeoNum>(coords: &[Coord<T>]) -> bool {
+    // suppose the linestring is closed
+    // then there will be exactly 4 times where the orientation changes
+
+    // the linestring must be closed
+    debug_assert_eq!(coords[0], coords[coords.len() - 1]);
+
+    let swaps = coords
+        .windows(2)
+        .map(|arr| {
+            // get bearing quadrant
+            match (arr[0].x < arr[1].x, arr[0].y < arr[1].y) {
+                (true, true) => OrientationQuadrant::First,
+                (true, false) => OrientationQuadrant::Second,
+                (false, false) => OrientationQuadrant::Third,
+                (false, true) => OrientationQuadrant::Fourth,
+            }
+        })
+        .collect::<Vec<_>>()
+        .windows(2)
+        .filter(|arr| arr[0] != arr[1])
+        .count();
+
+    // 3 times => one acute angle in boundary
+    // 4 times => most polygons
+    swaps > 4
 }
 
 /// A utility that tests convexity of a sequence of
@@ -205,6 +280,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::algorithm::convert::Convert;
     use geo_types::line_string;
 
     #[test]
@@ -244,5 +320,12 @@ mod tests {
         assert!(!two.is_strictly_convex());
         assert!(!two.is_strictly_ccw_convex());
         assert!(!two.is_strictly_cw_convex());
+    }
+
+    #[test]
+    fn star_is_not_convex() {
+        let star: Polygon = crate::wkt! {POLYGON ((0 0, 10 0, 3 -2, 5 5, 7 -2, 0 0))}.convert();
+        let ls = star.exterior();
+        assert!(ls.is_convex());
     }
 }
