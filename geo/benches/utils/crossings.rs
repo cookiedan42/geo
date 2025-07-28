@@ -1,7 +1,5 @@
 #![allow(dead_code)]
 
-use std::iter::FromIterator;
-
 use geo::algorithm::sweep::Intersections;
 use geo::{line_intersection::line_intersection, Line};
 

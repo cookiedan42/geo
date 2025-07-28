@@ -14,8 +14,18 @@
 - Simplify test rustc and libproj version specification in CI
 - Performance: Avoid running through entire iterator to reach last element in `outlier_detection` when calculating LRD and LOF
 - Add `Bearing` and `Destination` trait implementations for `Euclidean`
-- Add new implementation of the Bentley-Ottmann sweep-line algorithm to efficiently find sparse intersections between groups of lines.
+- Add `FillRule`-configurable boolean operations to `BooleanOps` trait
+  - <https://github.com/georust/geo/pull/1382>
+
+##  Update `Intersections` with new implementation of the Bentley-Ottmann sweep-line algorithm to efficiently find sparse intersections between groups of lines.
+
+- no longer `panic`'s when given pathological input
+- BREAKING: `Intersections` now computes intersections lazily
+- BREAKING: The `Crosses` trait used by `Intersections` now returns a `Line`, not a `LineOrPoint`.
+- BREAKING: The `Crosses` trait no longer needs to implement Clone
   - <https://github.com/georust/geo/pull/1358>
+  - <https://github.com/georust/geo/pull/1387>
+  - <https://github.com/georust/geo/pull/1359>
 
 ## 0.30.0 - 2025-03-24
 

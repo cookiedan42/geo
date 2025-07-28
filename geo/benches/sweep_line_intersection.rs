@@ -11,20 +11,18 @@
 //!
 //! To run specific benchmark groups:
 //! ```
-//! cargo bench --bench sweep_line_intersection "Performance Comparison"
-//! cargo bench --bench sweep_line_intersection "Dense Line Intersections"
-//! cargo bench --bench sweep_line_intersection "Sparse Large Dataset"
+//! cargo bench --bench sweep_line_intersection "Random Dense Lines"
+//! cargo bench --bench sweep_line_intersection "Random Sparse Lines"
 //! cargo bench --bench sweep_line_intersection "Essential Edge Cases"
 //! cargo bench --bench sweep_line_intersection "Realistic Patterns"
 //! ```
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use geo::algorithm::line_intersection::line_intersection;
-use geo::algorithm::sweep::Intersections as NewSweepIntersections;
+use geo::algorithm::sweep::Intersections;
 use geo::{Destination, Euclidean, Line};
 use geo_types::Point;
 use rand::prelude::*;
-use std::iter::FromIterator;
 
 /// Generate a set of random lines
 ///
@@ -51,29 +49,26 @@ fn generate_random_lines(count: usize, density: f64, rng: &mut impl Rng) -> Vec<
 }
 
 // Benchmark the brute force approach (O(n²))
-fn brute_force_intersections(lines: &[Line<f64>]) -> Vec<(Line<f64>, Line<f64>)> {
-    let mut result = Vec::new();
-    for i in 0..lines.len() {
-        for j in (i + 1)..lines.len() {
-            if line_intersection(lines[i], lines[j]).is_some() {
-                result.push((lines[i], lines[j]));
-            }
-        }
-    }
-    result
+fn brute_force_intersections(
+    lines: &[Line<f64>],
+) -> impl Iterator<Item = (Line<f64>, Line<f64>)> + '_ {
+    (0..lines.len()).flat_map(move |i| {
+        ((i + 1)..lines.len())
+            .flat_map(move |j| line_intersection(lines[i], lines[j]).map(|_| (lines[i], lines[j])))
+    })
 }
 
 // Benchmark with "dense" case - lines with many intersections.
 // When intersections are dense, the sweep algorithm has less of an advantage vs. brute force.
 fn bench_dense_line_intersections(c: &mut Criterion) {
-    let mut rng = StdRng::seed_from_u64(42);
     for (n, sample_size, expected_intersections) in [
         (10, None, 7),
-        (100, None, 861),
-        (1_000, Some(50), 91_898),
-        (10_000, Some(10), 8_570_900),
+        (100, None, 827),
+        (1_000, Some(50), 90_438),
+        (10_000, Some(10), 8_604_894),
     ] {
-        let mut group = c.benchmark_group(format!("Random dense lines ({n} lines)"));
+        let mut rng = StdRng::seed_from_u64(42);
+        let mut group = c.benchmark_group(format!("Random Dense Lines ({n} lines)"));
         if let Some(sample_size) = sample_size {
             group.sample_size(sample_size);
         }
@@ -82,17 +77,16 @@ fn bench_dense_line_intersections(c: &mut Criterion) {
         // Brute force approach
         group.bench_function("brute_force", |b| {
             b.iter(|| {
-                let intersections = black_box(brute_force_intersections(&lines));
-                assert_eq!(intersections.len(), expected_intersections);
+                let intersections = black_box(brute_force_intersections(&lines)).count();
+                assert_eq!(intersections, expected_intersections);
             });
         });
 
         // Sweep line algorithm
         group.bench_function("sweep", |b| {
             b.iter(|| {
-                let intersections: Vec<_> =
-                    NewSweepIntersections::<_>::from_iter(lines.iter().cloned()).collect();
-                assert_eq!(intersections.len(), expected_intersections);
+                let intersections = Intersections::from_iter(&lines).count();
+                assert_eq!(intersections, expected_intersections);
             });
         });
 
@@ -103,14 +97,14 @@ fn bench_dense_line_intersections(c: &mut Criterion) {
 // Benchmark with "sparse" case - lines with few intersections.
 // When intersections are sparse, the sweep algorithm tends to perform much better than brute force.
 fn bench_sparse_line_intersections(c: &mut Criterion) {
-    let mut rng = StdRng::seed_from_u64(42);
     for (n, sample_size, expected_intersections) in [
         (10, None, 0),
         (100, None, 0),
-        (1_000, Some(50), 10),
-        (10_000, Some(10), 796),
+        (1_000, Some(50), 11),
+        (10_000, Some(10), 798),
     ] {
-        let mut group = c.benchmark_group(format!("Random sparse lines ({n} lines)"));
+        let mut rng = StdRng::seed_from_u64(42);
+        let mut group = c.benchmark_group(format!("Random Sparse Lines ({n} lines)"));
         if let Some(sample_size) = sample_size {
             group.sample_size(sample_size);
         }
@@ -119,17 +113,16 @@ fn bench_sparse_line_intersections(c: &mut Criterion) {
         // Brute force approach
         group.bench_function("brute_force", |b| {
             b.iter(|| {
-                let intersections = black_box(brute_force_intersections(&lines));
-                assert_eq!(intersections.len(), expected_intersections);
+                let intersections = black_box(brute_force_intersections(&lines)).count();
+                assert_eq!(intersections, expected_intersections);
             });
         });
 
         // Sweep line algorithm
         group.bench_function("sweep", |b| {
             b.iter(|| {
-                let intersections: Vec<_> =
-                    NewSweepIntersections::<_>::from_iter(lines.iter().cloned()).collect();
-                assert_eq!(intersections.len(), expected_intersections);
+                let intersections = Intersections::from_iter(&lines).count();
+                assert_eq!(intersections, expected_intersections);
             });
         });
 
@@ -174,15 +167,15 @@ fn bench_essential_edge_cases(c: &mut Criterion) {
 
         group.bench_function("collinear_segments_sweep", |b| {
             b.iter(|| {
-                let intersections: Vec<_> =
-                    NewSweepIntersections::<_>::from_iter(lines.iter().cloned()).collect();
+                let intersections = Intersections::from_iter(&lines).count();
                 black_box(intersections);
             });
         });
 
         group.bench_function("collinear_segments_brute_force", |b| {
             b.iter(|| {
-                black_box(brute_force_intersections(&lines));
+                let intersections = brute_force_intersections(&lines).count();
+                black_box(intersections);
             });
         });
     }
@@ -252,15 +245,15 @@ fn bench_essential_edge_cases(c: &mut Criterion) {
 
         group.bench_function("numerical_precision_sweep", |b| {
             b.iter(|| {
-                let intersections: Vec<_> =
-                    NewSweepIntersections::<_>::from_iter(lines.iter().cloned()).collect();
+                let intersections = Intersections::from_iter(&lines).count();
                 black_box(intersections);
             });
         });
 
         group.bench_function("numerical_precision_brute_force", |b| {
             b.iter(|| {
-                black_box(brute_force_intersections(&lines));
+                let intersections = brute_force_intersections(&lines).count();
+                black_box(intersections);
             });
         });
     }
@@ -311,15 +304,15 @@ fn bench_realistic_patterns(c: &mut Criterion) {
 
         group.bench_function("road_network_sweep", |b| {
             b.iter(|| {
-                let intersections: Vec<_> =
-                    NewSweepIntersections::<_>::from_iter(lines.iter().cloned()).collect();
+                let intersections = Intersections::from_iter(&lines).count();
                 black_box(intersections);
             });
         });
 
         group.bench_function("road_network_brute_force", |b| {
             b.iter(|| {
-                black_box(brute_force_intersections(&lines));
+                let intersections = brute_force_intersections(&lines).count();
+                black_box(intersections);
             });
         });
     }
@@ -352,15 +345,15 @@ fn bench_realistic_patterns(c: &mut Criterion) {
 
         group.bench_function("polygon_boundaries_sweep", |b| {
             b.iter(|| {
-                let intersections: Vec<_> =
-                    NewSweepIntersections::<_>::from_iter(lines.iter().cloned()).collect();
+                let intersections = Intersections::from_iter(&lines).count();
                 black_box(intersections);
             });
         });
 
         group.bench_function("polygon_boundaries_brute_force", |b| {
             b.iter(|| {
-                black_box(brute_force_intersections(&lines));
+                let intersections = brute_force_intersections(&lines).count();
+                black_box(intersections);
             });
         });
     }
