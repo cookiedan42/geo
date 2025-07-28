@@ -61,17 +61,14 @@ where
         // if any of the polygon's corners intersect the triangle
         rhs.coords_iter().take(1).any(|p| self.intersects(&p))
 
+        // or any point of the triangle intersects the polygon
+        || self.0.intersects(rhs)
+        
         // or any of the polygon's lines intersect the triangle's lines
         || rhs.lines_iter().any(|rhs_line| {
             self.lines_iter()
                 .any(|self_line| self_line.intersects(&rhs_line))
         })
-
-        // or any point of the triangle intersects the polygon
-        // pt.intersects(polygon) is the most expensive, so check it last
-        // required only if triangle sits fully inside polygon or both are disjoint
-        // therefore only need to check one point
-        || self.0.intersects(rhs)
     }
 }
 
