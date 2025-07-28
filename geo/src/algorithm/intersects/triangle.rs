@@ -1,4 +1,4 @@
-use super::Intersects;
+use super::{has_disjoint_bboxes, Intersects};
 use crate::*;
 
 impl<T> Intersects<Coord<T>> for Triangle<T>
@@ -52,9 +52,29 @@ where
     T: GeoNum,
 {
     fn intersects(&self, rhs: &Polygon<T>) -> bool {
-        self.to_polygon().intersects(rhs)
+        // simplified logic based on Polygon intersects Polygon
+
+       if has_disjoint_bboxes(self, rhs) {
+            return false;
+        }
+
+        // if any of the polygon's corners intersect the triangle
+        rhs.coords_iter().take(1).any(|p| self.intersects(&p))
+
+        // or any of the polygon's lines intersect the triangle's lines
+        || rhs.lines_iter().any(|rhs_line| {
+            self.lines_iter()
+                .any(|self_line| self_line.intersects(&rhs_line))
+        })
+
+        // or any point of the triangle intersects the polygon
+        // pt.intersects(polygon) is the most expensive, so check it last
+        // required only if triangle sits fully inside polygon or both are disjoint
+        // therefore only need to check one point
+        || self.0.intersects(rhs)
     }
 }
+
 symmetric_intersects_impl!(Triangle<T>, MultiPolygon<T>);
 
 symmetric_intersects_impl!(Triangle<T>, Rect<T>);

@@ -45,25 +45,26 @@ where
     T: GeoNum,
 {
     fn intersects(&self, rhs: &Polygon<T>) -> bool {
-        /*
-        sufficient to show that any of these are true:
-        some corner of the polygon intersects the rectangle
-        some corner of the rectangle intersects the polygon
-        some edge of polygon (interior or exterior) intersects edge of rectangle
-        */
+        // simplified logic based on Polygon intersects Polygon
 
         if has_disjoint_bboxes(self, rhs) {
             return false;
         }
 
-        // rhs.intersects(pt) is the most expensive, so check it last
-        // only required if rectangle sits entirely within polygon
-        rhs.coords_iter().any(|p| self.intersects(&p))
-            || rhs.lines_iter().any(|l| {
-                self.lines_iter()
-                    .any(|other_line| l.intersects(&other_line))
-            })
-            || self.min().intersects(rhs)
+        // if any of the polygon's corners intersect the rectangle
+        rhs.coords_iter().take(1).any(|p| self.intersects(&p))
+
+        // or any of the polygon's lines intersect the rectangle's lines
+        || rhs.lines_iter().any(|rhs_line| {
+            self.lines_iter()
+                .any(|self_line| self_line.intersects(&rhs_line))
+        })
+
+        // or any point of the rectangle intersects the polygon
+        // pt.intersects(polygon) is the most expensive, so check it last
+        // required only if rectangle sits fully inside polygon or both are disjoint
+        // therefore only need to check one point
+        || self.min().intersects(rhs)
     }
 }
 
@@ -97,22 +98,25 @@ where
 impl<T> Intersects<Triangle<T>> for Rect<T>
 where
     T: GeoNum,
-{
+    {
+        
     fn intersects(&self, rhs: &Triangle<T>) -> bool {
-        // sufficient to show that any of these are true:
-        // some corner of the triangle intersects the rectangle
-        // some corner of the rectangle intersects the triangle
-        // some edge of triangle intersects edge of rectangle
-
+        // simplified logic based on Polygon intersects Polygon
+        
         if has_disjoint_bboxes(self, rhs) {
             return false;
         }
 
-        rhs.coords_iter().any(|p| self.intersects(&p))
-            || rhs.lines_iter().any(|l| {
-                self.lines_iter()
-                    .any(|other_line| l.intersects(&other_line))
-            })
-            || self.min().intersects(rhs)
+        // if any of the triangle's corners intersect the rectangle
+        self.intersects(&rhs.0)
+
+        // or any of the triangle's lines intersect the rectangle's lines
+        || rhs.lines_iter().any(|rhs_line| {
+            self.lines_iter()
+                .any(|self_line| self_line.intersects(&rhs_line))
+        })
+
+        // or some corner of the triangle intersects the rectangle
+        || self.min().intersects(rhs)
     }
 }
