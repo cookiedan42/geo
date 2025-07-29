@@ -11,15 +11,6 @@ where
     }
 }
 
-impl<T> Covers<Point<T>> for Rect<T>
-where
-    T: GeoNum,
-{
-    fn covers(&self, rhs: &Point<T>) -> bool {
-        self.intersects(rhs)
-    }
-}
-
 impl<T> Covers<Polygon<T>> for Rect<T>
 where
     T: GeoNum,
@@ -38,7 +29,7 @@ where
     }
 }
 
-impl_covers_from_intersects!(Rect<T>, [MultiPoint<T>]);
+impl_covers_from_intersects!(Rect<T>, [Point<T>, MultiPoint<T>]);
 impl_covers_from_intersects!(Rect<T>, [Line<T>, LineString<T>, MultiLineString<T>]);
-impl_covers_from_intersects!(Rect<T>, [ Rect<T>, Triangle<T>]);
+impl_covers_from_intersects!(Rect<T>, [Rect<T>, Triangle<T>]);
 impl_covers_from_intersects!(Rect<T>, [Geometry<T>, GeometryCollection<T>]);

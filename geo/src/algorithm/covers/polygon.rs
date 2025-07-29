@@ -4,8 +4,7 @@ use crate::{GeoFloat, GeoNum};
 
 impl<T> Covers<Coord<T>> for Polygon<T>
 where
-    T: GeoFloat,
-    Self: Intersects<Coord<T>>,
+    T: GeoNum,
 {
     fn covers(&self, rhs: &Coord<T>) -> bool {
         self.intersects(rhs)
@@ -21,11 +20,10 @@ impl_covers_from_relate!(Polygon<T>, [Geometry<T>, GeometryCollection<T>]);
 
 impl<T> Covers<Coord<T>> for MultiPolygon<T>
 where
-    T: GeoFloat,
-    Self: Covers<Point<T>>,
+    T: GeoNum,
 {
     fn covers(&self, rhs: &Coord<T>) -> bool {
-        self.covers(&Point::new(rhs.x, rhs.y))
+        self.intersects(rhs)
     }
 }
 impl_covers_from_intersects!(MultiPolygon<T>, [Point<T>, MultiPoint<T>]);
