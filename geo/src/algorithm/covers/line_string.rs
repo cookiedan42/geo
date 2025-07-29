@@ -5,12 +5,12 @@ use crate::{GeoFloat, GeoNum};
 impl<T> Covers<Coord<T>> for LineString<T>
 where
     T: GeoFloat,
-    Self: Covers<Point<T>>,
 {
     fn covers(&self, rhs: &Coord<T>) -> bool {
-        self.covers(&Point::new(rhs.x, rhs.y))
+        self.intersects(rhs)
     }
 }
+
 impl_covers_from_intersects!(LineString<T>, [Point<T>, MultiPoint<T>]);
 impl_covers_from_relate!(LineString<T>, [Line<T>]);
 impl_covers_from_relate!(LineString<T>, [ LineString<T>,  MultiLineString<T>]);
@@ -24,9 +24,10 @@ where
     Self: Covers<Point<T>>,
 {
     fn covers(&self, rhs: &Coord<T>) -> bool {
-        self.covers(&Point::new(rhs.x, rhs.y))
+        self.intersects(rhs)
     }
 }
+
 impl_covers_from_intersects!(MultiLineString<T>, [Point<T>, MultiPoint<T>]);
 impl_covers_from_relate!(MultiLineString<T>, [Line<T>]);
 impl_covers_from_relate!(MultiLineString<T>, [ LineString<T>,  MultiLineString<T>]);
