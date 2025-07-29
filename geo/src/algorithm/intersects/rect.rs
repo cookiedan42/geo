@@ -95,11 +95,10 @@ where
 impl<T> Intersects<Triangle<T>> for Rect<T>
 where
     T: GeoNum,
-    {
-        
+{
     fn intersects(&self, rhs: &Triangle<T>) -> bool {
         // simplified logic based on Polygon intersects Polygon
-        
+
         if has_disjoint_bboxes(self, rhs) {
             return false;
         }
@@ -115,5 +114,98 @@ where
             self.lines_iter()
                 .any(|self_line| self_line.intersects(&rhs_line))
         })
+    }
+}
+
+#[cfg(test)]
+mod test_triangle {
+    use super::*;
+
+    #[test]
+    fn test_disjoint() {
+        let rect: Rect<f64> = Rect::new((0, 0), (10, 10)).convert();
+        let triangle = Triangle::from([(0., 11.), (1., 11.), (1., 12.)]);
+        assert!(!rect.intersects(&triangle));
+    }
+
+    #[test]
+    fn test_partial() {
+        let rect: Rect<f64> = Rect::new((0, 0), (10, 10)).convert();
+        let triangle = Triangle::from([(1., 1.), (1., 2.), (2., 1.)]);
+        assert!(rect.intersects(&triangle));
+    }
+
+    #[test]
+    fn test_triangle_inside_rect() {
+        let rect: Rect<f64> = Rect::new((0, 0), (10, 10)).convert();
+        let triangle = Triangle::from([(1., 1.), (1., 2.), (2., 1.)]);
+        assert!(rect.intersects(&triangle));
+    }
+
+    #[test]
+    fn test_rect_inside_triangle() {
+        let rect: Rect<f64> = Rect::new((1, 1), (2, 2)).convert();
+        let triangle = Triangle::from([(0., 10.), (10., 0.), (0., 0.)]);
+        assert!(rect.intersects(&triangle));
+    }
+}
+
+#[cfg(test)]
+mod test_polygon {
+    use super::*;
+
+    #[test]
+    fn test_disjoint() {
+        let rect: Rect<f64> = Rect::new((0, 0), (10, 10)).convert();
+        let polygon: Polygon<f64> = Rect::new((11, 11), (12, 12)).to_polygon().convert();
+        assert!(!rect.intersects(&polygon));
+    }
+
+    #[test]
+    fn test_partial() {
+        let rect: Rect<f64> = Rect::new((0, 0), (10, 10)).convert();
+        let polygon: Polygon<f64> = Rect::new((9, 9), (12, 12)).to_polygon().convert();
+        assert!(rect.intersects(&polygon));
+    }
+
+    #[test]
+    fn test_rect_inside_polygon() {
+        let rect: Rect<f64> = Rect::new((1, 1), (2, 2)).convert();
+        let polygon: Polygon<f64> = Rect::new((0, 0), (10, 10)).to_polygon().convert();
+        assert!(rect.intersects(&polygon));
+    }
+
+    #[test]
+    fn test_polygon_inside_rect() {
+        let rect: Rect<f64> = Rect::new((0, 0), (10, 10)).convert();
+        let polygon: Polygon<f64> = Rect::new((1, 1), (2, 2)).to_polygon().convert();
+        assert!(rect.intersects(&polygon));
+    }
+
+    // Hole related tests
+
+    #[test]
+    fn test_rect_inside_polygon_hole() {
+        let bound: Rect<f64> = Rect::new((0, 0), (10, 10)).convert();
+        let hole = Rect::new((1, 1), (9, 9)).convert();
+        let rect = Rect::new((4, 4), (6, 6)).convert();
+        let polygon = Polygon::new(
+            bound.exterior_coords_iter().collect(),
+            vec![hole.exterior_coords_iter().collect()],
+        );
+
+        assert!(!rect.intersects(&polygon));
+    }
+
+    #[test]
+    fn test_rect_equals_polygon_hole() {
+        let bound: Rect<f64> = Rect::new((0, 0), (10, 10)).convert();
+        let rect: Rect = Rect::new((4, 4), (6, 6)).convert();
+        let polygon = Polygon::new(
+            bound.exterior_coords_iter().collect(),
+            vec![rect.exterior_coords_iter().collect()],
+        );
+
+        assert!(rect.intersects(&polygon));
     }
 }
