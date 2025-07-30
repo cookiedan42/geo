@@ -1,14 +1,16 @@
+use super::impl_covers_geometry_for;
 use super::Covers;
 use crate::geometry::*;
 use crate::geometry_delegate_impl;
+use crate::Intersects;
 use crate::{GeoFloat, GeoNum};
 
 impl<T> Covers<Coord<T>> for Geometry<T>
 where
-    T: GeoFloat,
+    T: GeoNum,
 {
-    fn covers(&self, coord: &Coord<T>) -> bool {
-        self.covers(&Point::from(*coord))
+    fn covers(&self, rhs: &Coord<T>) -> bool {
+        self.intersects(rhs)
     }
 }
 
@@ -121,3 +123,16 @@ where
         }
     }
 }
+
+impl_covers_geometry_for!(Coord<T>);
+impl_covers_geometry_for!(Point<T>);
+impl_covers_geometry_for!(MultiPoint<T>);
+
+impl_covers_geometry_for!(Line<T>);
+impl_covers_geometry_for!(LineString<T>);
+impl_covers_geometry_for!(MultiLineString<T>);
+
+impl_covers_geometry_for!(Rect<T>);
+impl_covers_geometry_for!(Triangle<T>);
+impl_covers_geometry_for!(Polygon<T>);
+impl_covers_geometry_for!(MultiPolygon<T>);

@@ -39,4 +39,4 @@ where
 impl_covers_from_intersects!(Rect<T>, [Point<T>, MultiPoint<T>]);
 impl_covers_from_intersects!(Rect<T>, [Line<T>, LineString<T>, MultiLineString<T>]);
 impl_covers_from_intersects!(Rect<T>, [Rect<T>, Triangle<T>]);
-impl_covers_from_intersects!(Rect<T>, [Geometry<T>, GeometryCollection<T>]);
+impl_covers_from_intersects!(Rect<T>, [GeometryCollection<T>]);
