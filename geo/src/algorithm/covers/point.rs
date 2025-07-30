@@ -1,4 +1,4 @@
-use super::{impl_covers_from_relate, Covers};
+use super::Covers;
 use crate::covers::impl_covers_from_intersects;
 use crate::dimensions::{Dimensions, HasDimensions};
 use crate::geometry::*;
@@ -7,20 +7,43 @@ use crate::{CoordsIter, Intersects};
 use crate::{GeoFloat, GeoNum};
 
 /*
-    If self is a sngle point
+    If self is a single point
     and all points of other intersect self,
     then self covers other.
 */
 
-impl<T, G> Covers<G> for Coord<T>
+impl<T> Covers<Coord<T>> for Coord<T>
 where
     T: GeoFloat,
-    Point<T>: Covers<G>,
 {
-    fn covers(&self, rhs: &G) -> bool {
-        Point::new(self.x, self.y).covers(rhs)
+    fn covers(&self, rhs: &Coord<T>) -> bool {
+        self == rhs
     }
 }
+
+macro_rules! impl_coord_covers {
+        ( [$($target:ty),*]) => {
+        $(
+            impl<T> Covers<$target> for Coord<T>
+            where
+                T: GeoNum,
+                Self: Intersects<Coord<T>>,
+                $target: HasDimensions,
+            {
+                fn covers(&self, target: &$target) -> bool {
+                    !target.is_empty()
+                    && target.coords_iter().all(|pt| self.intersects(&pt))
+                }
+            }
+        )*
+    };
+}
+
+impl_coord_covers!([Point<T>, MultiPoint<T>]);
+impl_coord_covers!([Line<T>, LineString<T>, MultiLineString<T>]);
+impl_coord_covers!([Rect<T>, Triangle<T>]);
+impl_coord_covers!([Polygon<T>, MultiPolygon<T>]);
+impl_coord_covers!([GeometryCollection<T>]);
 
 impl<T> Covers<Coord<T>> for Point<T>
 where
@@ -36,7 +59,7 @@ impl_covers_from_intersects!(Point<T>, [Point<T>, MultiPoint<T>]);
 impl_covers_from_intersects!(Point<T>, [Line<T>, LineString<T>, MultiLineString<T>]);
 impl_covers_from_intersects!(Point<T>, [Rect<T>, Triangle<T>]);
 impl_covers_from_intersects!(Point<T>, [Polygon<T>, MultiPolygon<T>]);
-impl_covers_from_intersects!(Point<T>, [Geometry<T>, GeometryCollection<T>]);
+impl_covers_from_intersects!(Point<T>, [GeometryCollection<T>]);
 
 /*
     If self is a multi point
@@ -159,4 +182,4 @@ macro_rules! impl_multipoint_covers_single_part {
 impl_multipoint_covers_single_part!([Line<T>, LineString<T>,Rect<T>,Triangle<T>,Polygon<T>]);
 impl_multipoint_covers_multi_part!([MultiLineString<T>, MultiPolygon<T>]);
 
-impl_covers_from_relate!(MultiPoint<T>, [Geometry<T>, GeometryCollection<T>]);
+impl_multipoint_covers_multi_part!([GeometryCollection<T>]);
