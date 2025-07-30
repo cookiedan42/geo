@@ -1,6 +1,12 @@
-use super::{impl_covers_from_intersects, impl_covers_from_relate, Covers};
-use crate::{geometry::*, CoordsIter, Intersects};
+use super::{impl_covers_from_intersects, Covers};
+use crate::{geometry::*, CoordsIter, HasDimensions, Intersects};
 use crate::{GeoFloat, GeoNum};
+
+/*
+    If self is a single line
+    and all points of other intersect self,
+    then self covers other.
+*/
 
 impl<T> Covers<Coord<T>> for Line<T>
 where
@@ -8,7 +14,7 @@ where
     Self: Covers<Point<T>>,
 {
     fn covers(&self, rhs: &Coord<T>) -> bool {
-        self.covers(&Point::new(rhs.x, rhs.y))
+        self.intersects(rhs)
     }
 }
 
