@@ -5,7 +5,7 @@ use crate::{geometry::*, CoordsIter, Intersects};
 
 /*
     If self is a simple convex polygon
-    and all points of other intersect self, 
+    and all points of other intersect self,
     then self covers other.
 */
 
