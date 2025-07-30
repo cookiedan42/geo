@@ -1,6 +1,13 @@
 use super::{impl_covers_from_intersects, Covers};
 use crate::GeoNum;
+use crate::HasDimensions;
 use crate::{geometry::*, CoordsIter, Intersects};
+
+/*
+    If self is a simple convex polygon
+    and all points of other intersect self, 
+    then self covers other.
+*/
 
 impl<T> Covers<Coord<T>> for Rect<T>
 where
