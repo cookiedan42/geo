@@ -136,3 +136,5 @@ impl_covers_geometry_for!(Rect<T>);
 impl_covers_geometry_for!(Triangle<T>);
 impl_covers_geometry_for!(Polygon<T>);
 impl_covers_geometry_for!(MultiPolygon<T>);
+
+impl_covers_geometry_for!(GeometryCollection<T>);
