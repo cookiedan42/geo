@@ -71,9 +71,13 @@ macro_rules! impl_covers_from_intersects {
             where
                 T: GeoNum,
                 Self: Intersects<Coord<T>>,
+                Self: HasDimensions,
+                $target: HasDimensions,
             {
                 fn covers(&self, target: &$target) -> bool {
-                    target.coords_iter().all(|pt| self.intersects(&pt))
+                    !self.is_empty()
+                    && !target.is_empty()
+                    && target.coords_iter().all(|pt| self.intersects(&pt))
                 }
             }
         )*
@@ -114,7 +118,6 @@ pub(crate) use impl_covers_geometry_for;
 mod test {
     use crate::line_string;
     use crate::Covers;
-    use crate::Relate;
     use crate::*;
 
     #[test]
