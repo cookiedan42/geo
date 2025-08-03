@@ -1,4 +1,5 @@
 use super::{impl_covers_from_intersects, impl_covers_from_relate, Covers};
+use crate::dimensions::Dimensions;
 use crate::{geometry::*, Contains, CoordsIter, Intersects};
 use crate::{GeoFloat, GeoNum};
 use crate::{HasDimensions, LinesIter};
@@ -60,14 +61,55 @@ where
     }
 }
 
-impl_covers_from_relate!(LineString<T>, [Rect<T>, Triangle<T>]);
+impl<T> Covers<Rect<T>> for LineString<T>
+where
+    T: GeoNum,
+{
+    fn covers(&self, rhs: &Rect<T>) -> bool {
+        if self.is_empty() {
+            return false;
+        }
+        match rhs.dimensions() {
+            Dimensions::Empty => false,
+            Dimensions::ZeroDimensional => {
+                let Some(pt) = rhs.coords_iter().next() else {return false;};
+                self.covers(&pt)
+            },
+            Dimensions::OneDimensional => rhs.lines_iter().all(|l| self.covers(&l)),
+            Dimensions::TwoDimensional => false,
+        }
+    }
+}
+
+impl<T> Covers<Triangle<T>> for LineString<T>
+where
+    T: GeoNum,
+{
+    fn covers(&self, rhs: &Triangle<T>) -> bool {
+        if self.is_empty() {
+            return false;
+        }
+        match rhs.dimensions() {
+            Dimensions::Empty => false,
+            Dimensions::ZeroDimensional => {
+                let Some(pt) = rhs.coords_iter().next() else {return false;};
+                self.covers(&pt)
+            },
+            Dimensions::OneDimensional => rhs.lines_iter().all(|l| self.covers(&l)),
+            Dimensions::TwoDimensional => false,
+        }
+    }
+}
 impl_covers_from_relate!(LineString<T>, [Polygon<T>,  MultiPolygon<T>]);
 impl_covers_from_relate!(LineString<T>, [GeometryCollection<T>]);
+
+//
+// MultiLineString Implementations
+//
 
 impl<T> Covers<Coord<T>> for MultiLineString<T>
 where
     T: GeoNum,
-    Self: Covers<Point<T>>,
 {
     fn covers(&self, rhs: &Coord<T>) -> bool {
         if self.is_empty() {
@@ -76,8 +118,6 @@ where
         self.intersects(rhs)
     }
 }
-
-// MultiLineString Implementations
 
 impl_covers_from_intersects!(MultiLineString<T>, [Point<T>, MultiPoint<T>]);
 
@@ -181,6 +221,45 @@ where
 
 // polygon types can only be true iff they are 1d ~ linestring/ multilinestring  
 
-impl_covers_from_relate!(MultiLineString<T>, [Rect<T>, Triangle<T>]);
+
+impl<T> Covers<Rect<T>> for MultiLineString<T>
+where
+    T: GeoNum,
+{
+    fn covers(&self, rhs: &Rect<T>) -> bool {
+        if self.is_empty() {
+            return false;
+        }
+        match rhs.dimensions() {
+            Dimensions::Empty => false,
+            Dimensions::ZeroDimensional => {
+                let Some(pt) = rhs.coords_iter().next() else {return false;};
+                self.covers(&pt)
+            },
+            Dimensions::OneDimensional => rhs.lines_iter().all(|l| self.covers(&l)),
+            Dimensions::TwoDimensional => false,
+        }
+    }
+}
+
+impl<T> Covers<Triangle<T>> for MultiLineString<T>
+where
+    T: GeoNum,
+{
+    fn covers(&self, rhs: &Triangle<T>) -> bool {
+        if self.is_empty() {
+            return false;
+        }
+        match rhs.dimensions() {
+            Dimensions::Empty => false,
+            Dimensions::ZeroDimensional => {
+                let Some(pt) = rhs.coords_iter().next() else {return false;};
+                self.covers(&pt)
+            },
+            Dimensions::OneDimensional => rhs.lines_iter().all(|l| self.covers(&l)),
+            Dimensions::TwoDimensional => false,
+        }
+    }
+}
 impl_covers_from_relate!(MultiLineString<T>, [Polygon<T>,  MultiPolygon<T>]);
 impl_covers_from_relate!(MultiLineString<T>, [GeometryCollection<T>]);

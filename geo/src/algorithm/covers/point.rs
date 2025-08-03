@@ -21,6 +21,9 @@ where
     }
 }
 
+// if all points of rhs intersect self
+// then rhs is a point-like
+// and self covers rhs
 macro_rules! impl_coord_covers {
         ( [$($target:ty),*]) => {
         $(
@@ -55,11 +58,14 @@ where
 }
 
 impl_covers_from_intersects!(Point<T>, [Point<T>, MultiPoint<T>]);
-
 impl_covers_from_intersects!(Point<T>, [Line<T>, LineString<T>, MultiLineString<T>]);
 impl_covers_from_intersects!(Point<T>, [Rect<T>, Triangle<T>]);
 impl_covers_from_intersects!(Point<T>, [Polygon<T>, MultiPolygon<T>]);
 impl_covers_from_intersects!(Point<T>, [GeometryCollection<T>]);
+
+//
+// MultiPoint Implementations
+//
 
 /*
     If self is a multi point
@@ -127,6 +133,9 @@ where
 
 impl_covers_from_intersects!(MultiPoint<T>, [Point<T>]);
 
+// if rhs can be transformed into MultiPoint
+// then we can use the MultiPoint implementation
+// else it can never be contained by a MultiPoint
 macro_rules! impl_multipoint_covers_multi_part {
     ( [$($target:ty),*]) => {
         $(
@@ -156,6 +165,10 @@ macro_rules! impl_multipoint_covers_multi_part {
     };
 }
 
+// if rhs is a single part
+// and it can be transformed into a Point
+// then we can use the Point implementation
+// else it can never be contained by a MultiPoint
 macro_rules! impl_multipoint_covers_single_part {
     ( [$($target:ty),*]) => {
         $(

@@ -19,6 +19,10 @@ impl_covers_from_relate!(Polygon<T>, [Rect<T>, Triangle<T>]);
 impl_covers_from_relate!(Polygon<T>, [Polygon<T>,  MultiPolygon<T>]);
 impl_covers_from_relate!(Polygon<T>, [GeometryCollection<T>]);
 
+//
+// MultiPolygon Implementations
+//
+
 impl<T> Covers<Coord<T>> for MultiPolygon<T>
 where
     T: GeoNum,
