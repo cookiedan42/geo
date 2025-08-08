@@ -72,9 +72,11 @@ where
         match rhs.dimensions() {
             Dimensions::Empty => false,
             Dimensions::ZeroDimensional => {
-                let Some(pt) = rhs.coords_iter().next() else {return false;};
+                let Some(pt) = rhs.coords_iter().next() else {
+                    return false;
+                };
                 self.covers(&pt)
-            },
+            }
             Dimensions::OneDimensional => rhs.lines_iter().all(|l| self.covers(&l)),
             Dimensions::TwoDimensional => false,
         }
@@ -92,9 +94,11 @@ where
         match rhs.dimensions() {
             Dimensions::Empty => false,
             Dimensions::ZeroDimensional => {
-                let Some(pt) = rhs.coords_iter().next() else {return false;};
+                let Some(pt) = rhs.coords_iter().next() else {
+                    return false;
+                };
                 self.covers(&pt)
-            },
+            }
             Dimensions::OneDimensional => rhs.lines_iter().all(|l| self.covers(&l)),
             Dimensions::TwoDimensional => false,
         }
@@ -219,8 +223,7 @@ where
     }
 }
 
-// polygon types can only be true iff they are 1d ~ linestring/ multilinestring  
-
+// polygon types can only be true iff they are 1d ~ linestring/ multilinestring
 
 impl<T> Covers<Rect<T>> for MultiLineString<T>
 where
@@ -233,9 +236,11 @@ where
         match rhs.dimensions() {
             Dimensions::Empty => false,
             Dimensions::ZeroDimensional => {
-                let Some(pt) = rhs.coords_iter().next() else {return false;};
+                let Some(pt) = rhs.coords_iter().next() else {
+                    return false;
+                };
                 self.covers(&pt)
-            },
+            }
             Dimensions::OneDimensional => rhs.lines_iter().all(|l| self.covers(&l)),
             Dimensions::TwoDimensional => false,
         }
@@ -253,9 +258,11 @@ where
         match rhs.dimensions() {
             Dimensions::Empty => false,
             Dimensions::ZeroDimensional => {
-                let Some(pt) = rhs.coords_iter().next() else {return false;};
+                let Some(pt) = rhs.coords_iter().next() else {
+                    return false;
+                };
                 self.covers(&pt)
-            },
+            }
             Dimensions::OneDimensional => rhs.lines_iter().all(|l| self.covers(&l)),
             Dimensions::TwoDimensional => false,
         }
