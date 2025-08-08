@@ -14,6 +14,28 @@
 - Simplify test rustc and libproj version specification in CI
 - Performance: Avoid running through entire iterator to reach last element in `outlier_detection` when calculating LRD and LOF
 - Add `Bearing` and `Destination` trait implementations for `Euclidean`
+- Add `FillRule`-configurable boolean operations to `BooleanOps` trait
+  - <https://github.com/georust/geo/pull/1382>
+- Fix panic in `algorithm::simplify::compute_rdp` with one point
+
+##  Update `Intersections` with new implementation of the Bentley-Ottmann sweep-line algorithm to efficiently find sparse intersections between groups of lines.
+
+- no longer `panic`'s when given pathological input
+- BREAKING: `Intersections` now computes intersections lazily
+- BREAKING: The `Crosses` trait used by `Intersections` now returns a `Line`, not a `LineOrPoint`.
+- BREAKING: The `Crosses` trait no longer needs to implement Clone
+  - <https://github.com/georust/geo/pull/1358>
+  - <https://github.com/georust/geo/pull/1387>
+  - <https://github.com/georust/geo/pull/1359>
+
+- Fix `is_convex` to correctly handle duplicate points
+- Fix`graham_hull` to correctly handle duplicate points when `on_hull` is set to true
+  - `graham_hull` now always returns a boundary with no duplicated points
+  - <https://github.com/georust/geo/issues/1383>
+- BREAKING: Break up blanket implementation of `Intersects<LineString>` into specific traits
+  - faster implementations for `Rect`, `Triangle`, `MultiPolygon`, `Polygon` intersects `LineString`
+  - <https://github.com/georust/geo/pull/1379>
+
 
 ## 0.30.0 - 2025-03-24
 
