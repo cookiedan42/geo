@@ -127,7 +127,7 @@ where
         if has_disjoint_bboxes(self, rhs) {
             return false;
         }
-        self.coordinate_position(rhs) !=  CoordPos::Outside
+        self.coordinate_position(rhs) != CoordPos::Outside
     }
 }
 

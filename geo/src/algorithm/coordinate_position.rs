@@ -342,7 +342,7 @@ where
                 return;
             }
             // early termination if we've found a boundary point
-            if *boundary_count %2 == 1 {
+            if *boundary_count % 2 == 1 {
                 return;
             }
         }
@@ -416,7 +416,15 @@ where
     // Use winding number algorithm with on boundary short-cicuit
     // See: https://en.wikipedia.org/wiki/Point_in_polygon#Winding_number_algorithm
     let mut winding_number = 0;
-    for line in linestring.lines() {
+    for line in linestring
+        .lines_iter()
+        // filter lines fully to the left of coord
+        .filter(|ln| ln.start.x >= coord.x || ln.end.x >= coord.x)
+        // filter lines fully above coord
+        .filter(|ln| ln.start.y > coord.y && ln.end.y > coord.y)
+        // filter lines fully below coord
+        .filter(|ln| ln.start.y < coord.y && ln.end.y < coord.y)
+    {
         // Edge Crossing Rules:
         //   1. an upward edge includes its starting endpoint, and excludes its final endpoint;
         //   2. a downward edge excludes its starting endpoint, and includes its final endpoint;
