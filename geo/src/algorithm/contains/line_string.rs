@@ -146,3 +146,26 @@ where
         self.iter().any(|ls| ls.contains(rhs))
     }
 }
+
+#[cfg(test)]
+mod test {
+    use crate::{Line,LineString, Validation};
+    use crate::{wkt,Convert};
+    use crate::{Contains,Relate};
+
+    #[test]
+    fn triangles(){
+        let ln: Line<f64> = wkt! {LINE(0 0, 10 0)}.convert();
+        let ls: LineString<f64> = wkt! {LINESTRING(0 0, 1 1, 2 0, 4 0, 5 1, 6 0, 8 0, 9 1,10 0, 8 0, 7 -1, 6 0, 4 0, 3 -1, 2 0 , 0 0 )}.convert();
+
+        // ln and ls are valid
+        assert!(ln.is_valid());
+        assert!(ls.is_valid());
+
+        assert_eq!(
+            ls.relate(&ln).is_contains(), // true
+            ls.contains(&ln) // false
+        );
+
+    }
+}
