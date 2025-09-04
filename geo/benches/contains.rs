@@ -1,6 +1,8 @@
 use criterion::{Criterion, criterion_group, criterion_main};
 use geo::algorithm::{Contains, Convert, Relate};
 use geo::geometry::*;
+use geo::BooleanOps;
+use geo::Covers;
 use geo::{coord, point, polygon};
 
 fn criterion_benchmark(c: &mut Criterion) {
@@ -544,6 +546,95 @@ fn bench_polygon_contains_multipoint(c: &mut Criterion) {
     );
 }
 
+fn simple_poly(c: &mut Criterion) {
+    c.bench_function("line in simple polygon (Covers)", |bencher| {
+        // use intersects
+        let polygon: Polygon<f64> = Rect::new((0, 0), (10, 10)).to_polygon().convert();
+        let ln: Line<f64> = Line::new((1, 1), (2, 2)).convert();
+        bencher.iter(|| {
+            assert!(criterion::black_box(&polygon).covers(criterion::black_box(&ln)));
+        });
+    });
+    c.bench_function("line in simple polygon (Relates)", |bencher| {
+        let polygon: Polygon<f64> = Rect::new((0, 0), (10, 10)).to_polygon().convert();
+        let ln: Line<f64> = Line::new((1, 1), (2, 2)).convert();
+        bencher.iter(|| {
+            assert!(criterion::black_box(&polygon)
+                .relate(criterion::black_box(&ln))
+                .is_covers());
+        });
+    });
+
+    c.bench_function("line in holed polygon (Covers)", |bencher| {
+        // overhead of checking hole exists
+        let outline: Polygon<f64> = Rect::new((0, 0), (10, 10)).to_polygon().convert();
+        let hole: Polygon<f64> = Rect::new((1, 1), (2, 2)).to_polygon().convert();
+        let polygon: Polygon<f64> = outline
+            .difference(&hole)
+            .0
+            .first()
+            .unwrap()
+            .clone()
+            .convert();
+        let ln: Line<f64> = Line::new((9, 9), (8, 8)).convert();
+        bencher.iter(|| {
+            assert!(criterion::black_box(&polygon).covers(criterion::black_box(&ln)));
+        });
+    });
+    c.bench_function("line in holed polygon (Relates)", |bencher| {
+        let outline: Polygon<f64> = Rect::new((0, 0), (10, 10)).to_polygon().convert();
+        let hole: Polygon<f64> = Rect::new((1, 1), (2, 2)).to_polygon().convert();
+        let polygon: Polygon<f64> = outline
+            .difference(&hole)
+            .0
+            .first()
+            .unwrap()
+            .clone()
+            .convert();
+        let ln: Line<f64> = Line::new((9, 9), (8, 8)).convert();
+        bencher.iter(|| {
+            assert!(criterion::black_box(&polygon)
+                .relate(criterion::black_box(&ln))
+                .is_covers());
+        });
+    });
+
+    c.bench_function("line in concave polygon (Relates)", |bencher| {
+        // overhead of checking convexity
+        let outline: Polygon<f64> = Rect::new((0, 0), (10, 10)).to_polygon().convert();
+        let hole: Polygon<f64> = Rect::new((0, 0), (2, 2)).to_polygon().convert();
+        let polygon: Polygon<f64> = outline
+            .difference(&hole)
+            .0
+            .first()
+            .unwrap()
+            .clone()
+            .convert();
+        let ln: Line<f64> = Line::new((9, 9), (8, 8)).convert();
+        bencher.iter(|| {
+            assert!(criterion::black_box(&polygon).covers(criterion::black_box(&ln)));
+        });
+    });
+    c.bench_function("line in concave polygon (Relates)", |bencher| {
+        let outline: Polygon<f64> = Rect::new((0, 0), (10, 10)).to_polygon().convert();
+        let hole: Polygon<f64> = Rect::new((0, 0), (2, 2)).to_polygon().convert();
+        let polygon: Polygon<f64> = outline
+            .difference(&hole)
+            .0
+            .first()
+            .unwrap()
+            .clone()
+            .convert();
+        let ln: Line<f64> = Line::new((9, 9), (8, 8)).convert();
+        bencher.iter(|| {
+            assert!(criterion::black_box(&polygon)
+                .relate(criterion::black_box(&ln))
+                .is_covers());
+        });
+    });
+}
+
+criterion_group!(benches1, simple_poly,);
 criterion_group!(
     benches,
     criterion_benchmark,
@@ -551,4 +642,4 @@ criterion_group!(
     bench_multipoint_contains_multipoint,
     bench_polygon_contains_multipoint,
 );
-criterion_main!(benches);
+criterion_main!(benches1);
