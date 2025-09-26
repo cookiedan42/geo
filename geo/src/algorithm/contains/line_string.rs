@@ -2,6 +2,7 @@ use super::{Contains, impl_contains_from_relate, impl_contains_geometry_for};
 use crate::Orientation;
 use crate::algorithm::kernels::Kernel;
 use crate::geometry::*;
+use crate::intersects::{value_in_between, value_in_range};
 use crate::{CoordNum, GeoFloat, GeoNum, HasDimensions};
 
 // ┌────────────────────────────────┐
@@ -55,20 +56,16 @@ where
         // improve performance by filtering out irrelevant segments
         let candidates: Vec<_> = self
             .lines()
-            // keep only collinear segments
+            .filter(|segment| x_overlap(&line, segment))
             .filter(|segment| is_collinear(&line, segment))
             // flip such that start < end for all segments
             .map(|segment| {
+                // use greater_than to handle the case where x values are equal (straight up or down)
                 if greater_than(&segment.end, &segment.start) {
                     segment
                 } else {
                     Line::new(segment.end, segment.start)
                 }
-            })
-            // filter out non-intersecting segments
-            // faster method using knowledge that segments are collinear to line
-            .filter(|segment| {
-                greater_than(&line.end, &segment.start) && greater_than(&segment.end, &line.start)
             })
             .collect();
 
@@ -156,6 +153,31 @@ fn greater_than<T: GeoNum>(p: &Coord<T>, q: &Coord<T>) -> bool {
     p.x > q.x || (p.x == q.x && p.y > q.y)
 }
 
+#[inline]
+fn x_overlap<T: GeoNum>(l1: &Line<T>, l2: &Line<T>) -> bool {
+    // save 2 if statements compared to 4 calls of `value_in_between`
+
+    (if l1.start.x < l1.end.x {
+        value_in_range(l2.start.x, l1.start.x, l1.end.x)
+            || value_in_range(l2.end.x, l1.start.x, l1.end.x)
+    } else {
+        value_in_range(l2.start.x, l1.end.x, l1.start.x)
+            || value_in_range(l2.end.x, l1.end.x, l1.start.x)
+    }) || (if l2.start.x > l2.end.x {
+        value_in_range(l1.start.x, l2.start.x, l2.end.x)
+            || value_in_range(l1.end.x, l2.start.x, l2.end.x)
+    } else {
+        value_in_range(l1.start.x, l2.end.x, l2.start.x)
+            || value_in_range(l1.end.x, l2.end.x, l2.start.x)
+    })
+
+    // value_in_between(l1.start.x, l2.start.x, l2.end.x)
+    // || value_in_between(l1.end.x, l2.start.x, l2.end.x)
+
+    // || value_in_between(l2.start.x, l1.start.x, l1.end.x)
+    // || value_in_between(l2.end.x, l1.start.x, l1.end.x)
+}
+
 #[cfg(test)]
 mod test {
     use crate::{Contains, Relate};
@@ -173,7 +195,56 @@ mod test {
 
         assert_eq!(
             ls.relate(&ln).is_contains(), // true
-            ls.contains(&ln)              // false
+            ls.contains(&ln)              // true
         );
+    }
+
+    #[test]
+    fn test_exact_identical() {
+        let ln: Line<f64> = wkt! {LINE(0 0, 1 1)}.convert();
+        let ls1: LineString<f64> = ln.clone().into();
+        let ls2: LineString<f64> = ln.clone().into();
+
+        // matches current Relate.is_contains() behavior
+        assert_eq!(
+            ln.relate(&ls1).is_contains(), // true
+            ln.contains(&ls1)              // true
+        );
+
+        assert_eq!(
+            ls1.relate(&ln).is_contains(), // true
+            ls1.contains(&ln)              // true
+        );
+
+        assert_eq!(
+            ls1.relate(&ls2).is_contains(), // true
+            ls1.contains(&ls2)              // true
+        );
+
+        // but this isn't really correct
+        assert!(ln.relate(&ls1).is_contains());
+        assert!(ln.contains(&ls1));
+
+        assert!(ls1.relate(&ln).is_contains());
+        assert!(ls1.contains(&ln));
+
+        assert!(ls1.relate(&ls2).is_contains());
+        assert!(ls1.contains(&ls2));
+    }
+
+    #[test]
+    fn test_vertical() {
+        let ln: Line<f64> = wkt! {LINE(0 1, 0 2)}.convert();
+        let ls: LineString<f64> = wkt! {LINESTRING(0 0, 0 4)}.convert();
+
+        assert!(ls.contains(&ln));
+    }
+
+    #[test]
+    fn test_horizontal() {
+        let ln: Line<f64> = wkt! {LINE(1 0, 2 0)}.convert();
+        let ls: LineString<f64> = wkt! {LINESTRING(0 0, 4 0)}.convert();
+
+        assert!(ls.contains(&ln));
     }
 }
