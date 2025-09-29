@@ -1,8 +1,8 @@
 use super::{Contains, impl_contains_from_relate, impl_contains_geometry_for};
-use crate::{Intersects, Orientation};
 use crate::algorithm::kernels::Kernel;
 use crate::geometry::*;
 use crate::{CoordNum, GeoFloat, GeoNum, HasDimensions};
+use crate::{Intersects, Orientation};
 
 // ┌────────────────────────────────┐
 // │ Implementations for LineString │
@@ -22,8 +22,7 @@ where
         }
 
         // we have already eliminated the cases where the coord is equal to the first or last point
-        self.lines()
-            .any(| line| line.intersects(coord))
+        self.lines().any(|line| line.intersects(coord))
     }
 }
 
@@ -255,10 +254,9 @@ mod test {
         let p_start: Point<f64> = wkt! {POINT(0 0)}.convert();
         let p_mid: Point<f64> = wkt! {POINT(0 5)}.convert();
         let p_end: Point<f64> = wkt! {POINT(0 10)}.convert();
-    
+
         assert!(!ls.contains(&p_start));
         assert!(ls.contains(&p_mid));
         assert!(!ls.contains(&p_end));
-    
     }
 }
