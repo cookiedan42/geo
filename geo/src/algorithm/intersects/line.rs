@@ -59,12 +59,36 @@ where
             // Equivalent to 4 point-line intersection
             // checks, but removes the calls to the kernel
             // predicates.
-            point_in_rect(line.start, self.start, self.end)
-                || point_in_rect(line.end, self.start, self.end)
-                || point_in_rect(self.end, line.start, line.end)
-                || point_in_rect(self.end, line.start, line.end)
+
+           if line.start.x == line.end.x {
+                // vertical line, we should compare y value
+                let (p1, p2) = if line.start.y < line.end.y {
+                    (&line.start.y, &line.end.y)
+                } else {
+                    (&line.end.y, &line.start.y)
+                };
+                let (q1, q2) = if self.start.y < self.end.y {
+                    (&self.start.y, &self.end.y)
+                } else {
+                    (&self.end.y, &self.start.y)
+                };
+                p1 <= q2 && q1 <= p2
+            } else {
+                // non-vertical line, valid to compare x value
+                let (p1, p2) = if line.start.x < line.end.x {
+                    (&line.start.x, &line.end.x)
+                } else {
+                    (&line.end.x, &line.start.x)
+                };
+                let (q1, q2) = if self.start.x < self.end.x {
+                    (&self.start.x, &self.end.x)
+                } else {
+                    (&self.end.x, &self.start.x)
+                };
+                p1 <= q2 && q1 <= p2
+            }
         } else {
-            false
+        false
         }
     }
 }
