@@ -6,7 +6,9 @@ use log::{debug, info};
 use wkt::ToWkt;
 
 use super::{check_buffer_test_case, input, Operation, Result};
-use geo::algorithm::{BooleanOps, Contains, HasDimensions, Intersects, Relate, Within};
+use geo::algorithm::{
+    BooleanOps, Contains, ContainsProperly, HasDimensions, Intersects, Relate, Within,
+};
 use geo::geometry::*;
 use geo::GeoNum;
 
@@ -190,6 +192,30 @@ impl TestRunner {
                         });
                     } else {
                         debug!("Contains success: actual == expected");
+                        self.successes.push(test_case);
+                    }
+                }
+                Operation::ContainsProperly {
+                    subject,
+                    target,
+                    expected:_,
+                } => {
+                    let relate_actual = subject.relate(target).is_contains_properly();
+                    let direct_actual = subject.contains_properly(target);
+
+                    if relate_actual != direct_actual {
+                        debug!(
+                            "ContainsProperly failure: Relate doesn't match ContainsProperly trait implementation"
+                        );
+                        let error_description = format!(
+                            "ContainsProperly failure - Relate.is_contains_properly: {relate_actual:?} doesn't match ContainsProperly trait: {direct_actual:?}"
+                        );
+                        self.add_failure(TestFailure {
+                            test_case,
+                            error_description,
+                        });
+                    } else {
+                        debug!("ContainsProperly success: actual == expected");
                         self.successes.push(test_case);
                     }
                 }
