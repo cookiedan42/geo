@@ -8,6 +8,12 @@ mod polygon;
 mod rect;
 mod triangle;
 
+/// Covers but it can not touch boundary
+///
+///
+///
+///
+///
 pub trait ContainsProperly<Rhs = Self> {
     fn contains_properly(&self, rhs: &Rhs) -> bool;
 }
@@ -28,7 +34,6 @@ macro_rules! impl_contains_properly_from_relate {
     };
 }
 use impl_contains_properly_from_relate;
-
 
 macro_rules! impl_contains_properly_geometry_for {
     ($geom_type: ty) => {
@@ -54,6 +59,31 @@ macro_rules! impl_contains_properly_geometry_for {
     };
 }
 use impl_contains_properly_geometry_for;
+
+macro_rules! impl_contains_properly_from_iter {
+    (coords: $type:ty) => {
+        impl<T> ContainsProperly<$type> for Rect<T>
+        where
+            T: GeoNum,
+        {
+            fn contains_properly(&self, rhs: &$type) -> bool {
+                rhs.coords_iter().all(|p| self.contains_properly(&p))
+            }
+        }
+    };
+    (coords_iter: $type:ty) => {
+        impl<T> ContainsProperly<$type> for Rect<T>
+        where
+            T: GeoNum,
+        {
+            fn contains_properly(&self, rhs: &$type) -> bool {
+                rhs.coords_iter().all(|p| self.contains_properly(&p))
+            }
+        }
+    };
+}
+
+use impl_contains_properly_from_iter;
 
 #[cfg(test)]
 mod test {
