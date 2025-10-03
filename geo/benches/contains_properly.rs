@@ -1,17 +1,17 @@
 use criterion::{Criterion, criterion_group, criterion_main};
-use geo::CoordsIter;
 use geo::algorithm::{ContainsProperly, Convert, Relate};
 use geo::geometry::*;
 use geo::wkt;
-use geo_types::PointsIter;
 
 fn compare_poly_in_poly(c: &mut Criterion) {
-    use geo::algorithm::{Contains, Relate};
+    use geo::algorithm::Contains;
     let poly1: Polygon<f64> = wkt! {POLYGON((9 0,9 9,0 9,0 0,9 0),(6 3,6 6,3 6,3 3,6 3))}.convert();
     let poly2: Polygon<f64> = wkt! {POLYGON((8 1,8 8,1 8,1 1,8 1),(7 2,7 7,2 7,2 2,7 2))}.convert();
 
-    let multipoly1 = MultiPolygon::new(vec![poly1.clone()]);
-    let multipoly2 = MultiPolygon::new(vec![poly2.clone()]);
+    let multipoly1: MultiPolygon<f64> =
+        wkt! {MULTIPOLYGON(((9 0,9 9,0 9,0 0,9 0),(8 1,8 8,1 8,1 1,8 1)),((7 2,7 7,2 7,2 2,7 2)))}
+            .convert();
+    let multipoly2: MultiPolygon<f64> = wkt! {MULTIPOLYGON(((6 3,6 6,3 6,3 3,6 3)))}.convert();
 
     c.bench_function("contains_properly poly poly", |bencher| {
         bencher.iter(|| {

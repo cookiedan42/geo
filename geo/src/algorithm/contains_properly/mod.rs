@@ -92,7 +92,7 @@ mod test {
     #[test]
     fn exhaustive_compile_test() {
         use geo_types::*;
-        let c = Coord { x: 0., y: 0. };
+        // let c = Coord { x: 0., y: 0. };
         let pt: Point = Point::new(0., 0.);
         let ls = line_string![(0., 0.).into(), (1., 1.).into()];
         let multi_ls = MultiLineString::new(vec![ls.clone()]);
