@@ -1,4 +1,5 @@
 use criterion::{Criterion, criterion_group, criterion_main};
+use geo::PreparedGeometry;
 use geo::algorithm::{ContainsProperly, Convert, Relate};
 use geo::geometry::*;
 use geo::wkt;
@@ -18,6 +19,19 @@ fn compare_poly_in_poly(c: &mut Criterion) {
             assert!(criterion::black_box(&poly1).contains_properly(criterion::black_box(&poly2)));
         });
     });
+
+    c.bench_function("relate prepared poly poly", |bencher| {
+        let p1 = PreparedGeometry::from(poly1.clone());
+        let p2 = PreparedGeometry::from(poly2.clone());
+        bencher.iter(|| {
+            assert!(
+                criterion::black_box(&p1)
+                    .relate(criterion::black_box(&p2))
+                    .is_contains_properly()
+            );
+        });
+    });
+
     c.bench_function("contains poly poly", |bencher| {
         bencher.iter(|| {
             assert!(criterion::black_box(&poly1).contains(criterion::black_box(&poly2)));
@@ -42,6 +56,19 @@ fn compare_poly_in_poly(c: &mut Criterion) {
             );
         });
     });
+
+    c.bench_function("relate prepared multipoly multipoly", |bencher| {
+        let p1 = PreparedGeometry::from(multipoly1.clone());
+        let p2 = PreparedGeometry::from(multipoly2.clone());
+        bencher.iter(|| {
+            assert!(
+                criterion::black_box(&p1)
+                    .relate(criterion::black_box(&p2))
+                    .is_contains_properly()
+            );
+        });
+    });
+
     c.bench_function("contains multipoly multipoly", |bencher| {
         bencher.iter(|| {
             assert!(criterion::black_box(&multipoly1).contains(criterion::black_box(&multipoly2)));
