@@ -136,7 +136,6 @@ GeometryCollection<T>,
 Rect<T>,Triangle<T>
 ]);
 
-
 impl<T> ContainsProperly<Polygon<T>> for MultiPolygon<T>
 where
     T: GeoNum,
@@ -160,20 +159,28 @@ where
             return false;
         };
         // since no boundary intersection, rhs must be constrained within one of the polygons or totally disjoint
-        if self.0.iter().map(|poly|poly.exterior()).any(|ls|coord_pos_relative_to_ring(*rhs_ext_coord, ls) != CoordPos::Inside) {
+        if self
+            .0
+            .iter()
+            .map(|poly| poly.exterior())
+            .any(|ls| coord_pos_relative_to_ring(*rhs_ext_coord, ls) != CoordPos::Inside)
+        {
             return false;
         }
-
 
         // all holes of self must be covered by some hole of rhs
         // if any hole of self is uncovered by a hole of rhs, then there exists a point of rhs which does not lie in self
         // and hence return false
         // since we know all rings are concentric or disjoint, we can just check the first point of each hole
 
+        // check for disjoint
+        let mut is_disjoint = true;
+
         for poly in self.0.iter() {
             if coord_pos_relative_to_ring(*rhs_ext_coord, poly.exterior()) != CoordPos::Inside {
                 continue;
             }
+            is_disjoint = false;
 
             for self_hole in poly.interiors() {
                 // if self_hole is empty, then it is covered by rhs
@@ -187,7 +194,7 @@ where
                 }
             }
         }
-        return true;
+        return !is_disjoint;
     }
 }
 impl<T> ContainsProperly<MultiPolygon<T>> for MultiPolygon<T>
@@ -195,7 +202,7 @@ where
     T: GeoNum,
 {
     fn contains_properly(&self, rhs: &MultiPolygon<T>) -> bool {
-          if self.is_empty() || rhs.is_empty() {
+        if self.is_empty() || rhs.is_empty() {
             return false;
         }
 
@@ -208,44 +215,50 @@ where
         }
         // all rings are concentric or disjoint
 
-
         for rhs_poly in rhs.0.iter() {
-             // if any point of rhs exterior lies within self.exterior, then all points of rhs exterior lie within self.exterior
-        let Some(rhs_ext_coord) = rhs_poly.exterior().0.first() else {
-            return false;
-        };
-        // since no boundary intersection, rhs must be constrained within one of the polygons or totally disjoint
-        if self.0.iter().map(|poly|poly.exterior()).any(|ls|coord_pos_relative_to_ring(*rhs_ext_coord, ls) != CoordPos::Inside) {
-            return false;
-        }
-
-
-        // all holes of self must be covered by some hole of rhs
-        // if any hole of self is uncovered by a hole of rhs, then there exists a point of rhs which does not lie in self
-        // and hence return false
-        // since we know all rings are concentric or disjoint, we can just check the first point of each hole
-
-        for poly in self.0.iter() {
-            if coord_pos_relative_to_ring(*rhs_ext_coord, poly.exterior()) != CoordPos::Inside {
-                continue;
+            // if any point of rhs exterior lies within self.exterior, then all points of rhs exterior lie within self.exterior
+            let Some(rhs_ext_coord) = rhs_poly.exterior().0.first() else {
+                return false;
+            };
+            // since no boundary intersection, rhs must be constrained within one of the polygons or totally disjoint
+            if self
+                .0
+                .iter()
+                .map(|poly| poly.exterior())
+                .any(|ls| coord_pos_relative_to_ring(*rhs_ext_coord, ls) != CoordPos::Inside)
+            {
+                return false;
             }
 
-            for self_hole in poly.interiors() {
-                // if self_hole is empty, then it is covered by rhs
-                let Some(self_hole_first_coord) = self_hole.0.first() else {
+            // all holes of self must be covered by some hole of rhs
+            // if any hole of self is uncovered by a hole of rhs, then there exists a point of rhs which does not lie in self
+            // and hence return false
+            // since we know all rings are concentric or disjoint, we can just check the first point of each hole
+
+            // check for disjoint
+            let mut is_disjoint = true;
+
+            for poly in self.0.iter() {
+                if coord_pos_relative_to_ring(*rhs_ext_coord, poly.exterior()) != CoordPos::Inside {
                     continue;
-                };
-                if rhs_poly.interiors().iter().any(|rhs_hole| {
-                    coord_pos_relative_to_ring(*self_hole_first_coord, rhs_hole) != CoordPos::Inside
-                }) {
-                    return false;
+                }
+                is_disjoint = false;
+
+                for self_hole in poly.interiors() {
+                    // if self_hole is empty, then it is covered by rhs
+                    let Some(self_hole_first_coord) = self_hole.0.first() else {
+                        continue;
+                    };
+                    if rhs_poly.interiors().iter().any(|rhs_hole| {
+                        coord_pos_relative_to_ring(*self_hole_first_coord, rhs_hole)
+                            != CoordPos::Inside
+                    }) {
+                        return false;
+                    }
                 }
             }
         }
-        }
-        true
-
-
+        return !is_disjoint;
     }
 }
 
@@ -271,7 +284,7 @@ mod tests {
         assert!(poly1.contains_properly(&poly2));
     }
 
-       #[test]
+    #[test]
     fn test_contains_properly_donut_multi_multi() {
         let poly1: MultiPolygon<f64> =
             wkt! {MULTIPOLYGON(((9 0,9 9,0 9,0 0,9 0),(6 3,6 6,3 6,3 3,6 3)))}.convert();
