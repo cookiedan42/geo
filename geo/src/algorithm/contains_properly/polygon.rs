@@ -7,6 +7,25 @@ use crate::coordinate_position::{CoordPos, CoordinatePosition, coord_pos_relativ
 use crate::geometry::*;
 use crate::{GeoFloat, GeoNum};
 
+macro_rules! impl_poly_from_polygon {
+    ($for:ty,  [$($target:ty),*]) => {
+        $(
+            impl<T> ContainsProperly<$target> for $for
+            where
+                T: GeoNum
+            {
+                fn contains_properly(&self, target: &$target) -> bool {
+                    self.contains_properly(&target.to_polygon())
+                }
+            }
+        )*
+    };
+}
+
+// ┌─────────────────────────────┐
+// │ Implementations for Polygon │
+// └─────────────────────────────┘
+
 impl<T> ContainsProperly<Coord<T>> for Polygon<T>
 where
     T: GeoNum,
@@ -84,24 +103,102 @@ where
     }
 }
 
-impl<T> ContainsProperly<Rect<T>> for Polygon<T>
+impl<T> ContainsProperly<Line<T>> for Polygon<T>
 where
     T: GeoNum,
 {
-    fn contains_properly(&self, rhs: &Rect<T>) -> bool {
-        self.contains_properly(&rhs.to_polygon())
-    }
-}
-impl<T> ContainsProperly<Triangle<T>> for Polygon<T>
-where
-    T: GeoNum,
-{
-    fn contains_properly(&self, rhs: &Triangle<T>) -> bool {
-        self.contains_properly(&rhs.to_polygon())
+    fn contains_properly(&self, rhs: &Line<T>) -> bool {
+        if self.is_empty() || rhs.is_empty() {
+            return false;
+        }
+        if self.lines_iter().any(|s| s.intersects(rhs)) {
+            return false;
+        }
+        self.contains_properly(&rhs.start)
     }
 }
 
-impl_contains_properly_from_relate!(Polygon<T>, [Line<T>, LineString<T>, MultiLineString<T>,GeometryCollection<T>]);
+impl<T> ContainsProperly<LineString<T>> for Polygon<T>
+where
+    T: GeoNum,
+{
+    fn contains_properly(&self, rhs: &LineString<T>) -> bool {
+        if self.is_empty() || rhs.is_empty() {
+            return false;
+        }
+        if boundary_intersects(self, rhs) {
+            return false;
+        }
+
+        let Some(rhs_coord) = rhs.0.first() else {
+            return false;
+        };
+        self.contains_properly(rhs_coord)
+    }
+}
+
+impl<T> ContainsProperly<MultiLineString<T>> for Polygon<T>
+where
+    T: GeoNum,
+{
+    fn contains_properly(&self, rhs: &MultiLineString<T>) -> bool {
+        if self.is_empty() || rhs.is_empty() {
+            return false;
+        }
+        if boundary_intersects(self, rhs) {
+            return false;
+        }
+        rhs.0
+            .iter()
+            .filter(|l| !l.is_empty())
+            .filter_map(|l| l.0.first())
+            .all(|c| self.contains_properly(c))
+    }
+}
+
+impl_poly_from_polygon!(Polygon<T>, [Rect<T>, Triangle<T>]);
+impl_contains_properly_from_relate!(Polygon<T>, [GeometryCollection<T>]);
+
+// ┌──────────────────────────────────┐
+// │ Implementations for MultiPolygon │
+// └──────────────────────────────────┘
+
+impl<T> ContainsProperly<Coord<T>> for MultiPolygon<T>
+where
+    T: GeoNum,
+{
+    fn contains_properly(&self, rhs: &Coord<T>) -> bool {
+        if self.is_empty() {
+            return false;
+        }
+        self.coordinate_position(rhs) == CoordPos::Inside
+    }
+}
+
+impl<T> ContainsProperly<Point<T>> for MultiPolygon<T>
+where
+    T: GeoNum,
+{
+    fn contains_properly(&self, rhs: &Point<T>) -> bool {
+        if self.is_empty() || rhs.is_empty() {
+            return false;
+        }
+
+        self.contains_properly(&rhs.0)
+    }
+}
+
+impl<T> ContainsProperly<MultiPoint<T>> for MultiPolygon<T>
+where
+    T: GeoNum,
+{
+    fn contains_properly(&self, rhs: &MultiPoint<T>) -> bool {
+        if self.is_empty() || rhs.is_empty() {
+            return false;
+        }
+        rhs.coords_iter().all(|p| self.contains_properly(&p))
+    }
+}
 
 impl<T> ContainsProperly<Polygon<T>> for MultiPolygon<T>
 where
@@ -177,28 +274,65 @@ where
     }
 }
 
-impl<T> ContainsProperly<Rect<T>> for MultiPolygon<T>
+impl<T> ContainsProperly<Line<T>> for MultiPolygon<T>
 where
     T: GeoNum,
 {
-    fn contains_properly(&self, rhs: &Rect<T>) -> bool {
-        self.contains_properly(&rhs.to_polygon())
+    fn contains_properly(&self, rhs: &Line<T>) -> bool {
+        if self.is_empty() || rhs.is_empty() {
+            return false;
+        }
+        if self.lines_iter().any(|s| s.intersects(rhs)) {
+            return false;
+        }
+        self.contains_properly(&rhs.start)
     }
 }
-impl<T> ContainsProperly<Triangle<T>> for MultiPolygon<T>
+
+impl<T> ContainsProperly<LineString<T>> for MultiPolygon<T>
 where
     T: GeoNum,
 {
-    fn contains_properly(&self, rhs: &Triangle<T>) -> bool {
-        self.contains_properly(&rhs.to_polygon())
+    fn contains_properly(&self, rhs: &LineString<T>) -> bool {
+        if self.is_empty() || rhs.is_empty() {
+            return false;
+        }
+        if boundary_intersects(self, rhs) {
+            return false;
+        }
+
+        let Some(rhs_coord) = rhs.0.first() else {
+            return false;
+        };
+        self.contains_properly(rhs_coord)
     }
 }
 
-impl_contains_properly_from_relate!(MultiPolygon<T>, [Point<T>,MultiPoint<T>,Line<T>, LineString<T>, MultiLineString<T>,GeometryCollection<T>]);
+impl<T> ContainsProperly<MultiLineString<T>> for MultiPolygon<T>
+where
+    T: GeoNum,
+{
+    fn contains_properly(&self, rhs: &MultiLineString<T>) -> bool {
+        if self.is_empty() || rhs.is_empty() {
+            return false;
+        }
+        if boundary_intersects(self, rhs) {
+            return false;
+        }
+        rhs.0
+            .iter()
+            .filter(|l| !l.is_empty())
+            .filter_map(|l| l.0.first())
+            .all(|c| self.contains_properly(c))
+    }
+}
 
-//------------------------------------------------------------------------------
-// Util functions
-//------------------------------------------------------------------------------
+impl_poly_from_polygon!(MultiPolygon<T>, [Rect<T>, Triangle<T>]);
+impl_contains_properly_from_relate!(MultiPolygon<T>, [GeometryCollection<T>]);
+
+// ┌───────────────────┐
+// │ Utility Functions │
+// └───────────────────┘
 
 /// Return true if the boundary of lhs intersects any of the boundaries of rhs
 /// where lhs and rhs are both polygons/multipolygons
