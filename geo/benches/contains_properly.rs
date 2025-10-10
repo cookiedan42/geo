@@ -1,11 +1,40 @@
 use criterion::{Criterion, criterion_group, criterion_main};
 use geo::PreparedGeometry;
-use geo::algorithm::{ContainsProperly, Convert, Relate};
+use geo::algorithm::{Contains, ContainsProperly, Convert, Relate};
 use geo::geometry::*;
 use geo::wkt;
 
 fn compare_poly_in_poly(c: &mut Criterion) {
-    use geo::algorithm::Contains;
+    c.bench_function(
+        "complex polygon contains_properly polygon (trait)",
+        |bencher| {
+            let polygon = Polygon::<f64>::new(geo_test_fixtures::louisiana(), vec![]);
+            let contained_polygon = geo_test_fixtures::east_baton_rouge();
+
+            bencher.iter(|| {
+                assert!(
+                    criterion::black_box(&polygon)
+                        .contains_properly(criterion::black_box(&contained_polygon))
+                );
+            });
+        },
+    );
+    c.bench_function(
+        "complex polygon contains_properly polygon (relates)",
+        |bencher| {
+            let polygon = Polygon::<f64>::new(geo_test_fixtures::louisiana(), vec![]);
+            let contained_polygon = geo_test_fixtures::east_baton_rouge();
+
+            bencher.iter(|| {
+                assert!(
+                    criterion::black_box(&polygon)
+                        .relate(criterion::black_box(&contained_polygon))
+                        .is_contains_properly()
+                );
+            });
+        },
+    );
+
     let poly1: Polygon<f64> = wkt! {POLYGON((9 0,9 9,0 9,0 0,9 0),(6 3,6 6,3 6,3 3,6 3))}.convert();
     let poly2: Polygon<f64> = wkt! {POLYGON((8 1,8 8,1 8,1 1,8 1),(7 2,7 7,2 7,2 2,7 2))}.convert();
 
