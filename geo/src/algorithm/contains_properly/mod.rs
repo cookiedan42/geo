@@ -95,6 +95,24 @@ macro_rules! impl_contains_properly_geometry_for {
 }
 use impl_contains_properly_geometry_for;
 
+macro_rules! impl_contains_properly_convex_poly {
+    // we only need to check the exterior
+     ( $for:ty,  [$($target:ty),*]) => {
+        $(
+            impl<T> ContainsProperly<$target> for $for
+            where
+                T: GeoNum
+            {
+                fn contains_properly(&self, target: &$target) -> bool {
+                    use $crate::algorithm::coords_iter::CoordsIter;
+                    target.exterior_coords_iter().all(|p| self.contains_properly(&p))
+                }
+            }
+        )*
+    };
+}
+pub(crate) use impl_contains_properly_convex_poly;
+
 #[cfg(test)]
 mod test {
     use super::*;
