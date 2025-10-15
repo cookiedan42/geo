@@ -1,6 +1,6 @@
 use super::{Intersects, has_disjoint_bboxes};
 use crate::coordinate_position::CoordPos;
-use crate::{BoundingRect, CoordinatePosition, CoordsIter, LinesIter};
+use crate::{BoundingRect, CoordinatePosition, CoordsIter};
 use crate::{
     Coord, CoordNum, GeoNum, Line, LineString, MultiLineString, MultiPoint, MultiPolygon, Point,
     Polygon, Rect, Triangle,
@@ -50,7 +50,7 @@ where
         self.exterior().coords_iter().take(1).any(|p|polygon.intersects(&p))
         || polygon.exterior().coords_iter().take(1).any(|p|self.intersects(&p))
         // exterior exterior
-        || self.exterior().lines_iter().any(|self_line| polygon.exterior().lines_iter().any(|poly_line| self_line.intersects(&poly_line)))
+        || self.exterior().intersects(polygon.exterior())
         // exterior interior
         ||self.interiors().iter().any(|inner_line_string| polygon.exterior().intersects(inner_line_string))
         ||polygon.interiors().iter().any(|inner_line_string| self.exterior().intersects(inner_line_string))
