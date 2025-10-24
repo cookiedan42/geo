@@ -1,5 +1,4 @@
 use crate::geometry::*;
-// use crate::relate::Relate;
 use super::{ContainsProperly, impl_contains_properly_from_relate};
 use crate::GeoFloat;
 
