@@ -1,5 +1,6 @@
 use super::{Intersects, has_disjoint_bboxes};
 use crate::BoundingRect;
+use crate::intersects::point_in_rect;
 use crate::*;
 
 // Blanket implementation using self.lines().any().
@@ -45,7 +46,55 @@ intersects_line_string_impl!(Coord<T>);
 intersects_line_string_impl!(Point<T>);
 intersects_line_string_impl!(MultiPoint<T>);
 
-intersects_line_string_impl!(Line<T>);
+impl<T> Intersects<Line<T>> for LineString<T>
+where
+    T: GeoNum,
+{
+    fn intersects(&self, line: &Line<T>) -> bool {
+        if self.is_empty() {
+            return false;
+        }
+        if line.start == line.end {
+            return self.intersects(&line.start);
+        }
+
+        let orientations = self
+            .coords_iter()
+            .map(|c| (c, T::Ker::orient2d(line.start, line.end, c)));
+
+        let line_bbox = line.bounding_rect();
+        orientations
+            .clone()
+            .zip(orientations.skip(1))
+            .any(|(prev, curr)| {
+             
+                if curr.1 != prev.1 {
+                    let check_2_1 = T::Ker::orient2d(prev.0, curr.0, line.start);
+                    let check_2_2 = T::Ker::orient2d(prev.0, curr.0, line.end);
+                    check_2_1 != check_2_2
+                } else if prev.1 == Orientation::Collinear {
+                    // special case: collinear line segments.
+
+                    // equiv. to 4 point-line intersection
+                    // checks, but removes the calls to the kernel
+                    // predicates.
+                    prev.0.intersects(&line_bbox) || curr.0.intersects(&line_bbox) 
+                    // line_bbox.intersects(&prev.0) || line_bbox.intersects(&curr.0)
+
+                    // point_in_rect(line.start, prev.0, curr.0)
+                        // || point_in_rect(line.end, prev.0, curr.0)
+                        // || point_in_rect(prev.0, line.start, line.end)
+                        // || point_in_rect(curr.0, line.start, line.end)
+                }
+                else{
+                    false
+                }
+            })
+
+    }
+}
+
+// intersects_line_string_impl!(Line<T>);
 intersects_line_string_impl!(LineString<T>);
 symmetric_intersects_impl!(LineString<T>, MultiLineString<T>);
 
