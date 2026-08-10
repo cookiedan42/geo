@@ -22,6 +22,19 @@ macro_rules! intersects_line_string_impl {
             }
         }
     };
+    (iter: $t:ty) => {
+        impl<T> $crate::Intersects<$t> for LineString<T>
+        where
+            T: GeoNum,
+        {
+            fn intersects(&self, rhs: &$t) -> bool {
+                if has_disjoint_bboxes(self, rhs) {
+                    return false;
+                }
+                lines_intersects(self, rhs)
+            }
+        }
+    };
     (area: $t:ty) => {
         impl<T> $crate::Intersects<$t> for LineString<T>
         where
@@ -38,12 +51,46 @@ macro_rules! intersects_line_string_impl {
                     return false;
                 };
                 coord.intersects(rhs)
-                    || self
-                        .lines()
-                        .any(|l| rhs.lines_iter().any(|other| l.intersects(&other)))
+                    // || lines_intersects(self,rhs)
+                    // self
+                    //     .lines()
+                    //     .any(|l| rhs.lines_iter().any(|other| l.intersects(&other)))
             }
         }
     };
+}
+
+/// Return true if the boundary of lhs intersects any of the boundaries of rhs
+/// where lhs and rhs are both polygons/multipolygons
+pub (crate) fn lines_intersects<'a, T, G1, G2>(lhs: &'a G1, rhs: &'a G2) -> bool
+where
+    T: GeoNum,
+    G1: LinesIter<'a, Scalar = T> + BoundingRect<T> + CoordsIter<Scalar = T>,
+    G2: LinesIter<'a, Scalar = T> + BoundingRect<T>+ CoordsIter<Scalar = T>,
+    Line<T>: Intersects<Line<T>>,
+    Rect<T>: Intersects<Rect<T>>,
+
+{
+    let a = lhs.coords_count();
+    let b = rhs.coords_count();
+
+    if a < 5 || b < 5 {
+        return lhs.lines_iter().any(|l| rhs.lines_iter().any(|r| l.intersects(&r)));
+    }
+
+    let rhs_bbox_cache = rhs
+        .lines_iter()
+        .map(|l| (l, l.bounding_rect()))
+        .collect::<Vec<(Line<T>, Rect<T>)>>();
+
+    return lhs
+        .lines_iter()
+        .map(|l| (l, l.bounding_rect()))
+        .any(|(l, l_bbox)| {
+            rhs_bbox_cache
+                .iter()
+                .any(|(r, r_bbox)| l_bbox.intersects(r_bbox) && l.intersects(r))
+        });
 }
 
 intersects_line_string_impl!(Coord<T>);
@@ -51,7 +98,7 @@ intersects_line_string_impl!(Point<T>);
 intersects_line_string_impl!(MultiPoint<T>);
 
 intersects_line_string_impl!(Line<T>);
-intersects_line_string_impl!(LineString<T>);
+intersects_line_string_impl!(iter:LineString<T>);
 symmetric_intersects_impl!(LineString<T>, MultiLineString<T>);
 
 intersects_line_string_impl!(area: Polygon<T>);

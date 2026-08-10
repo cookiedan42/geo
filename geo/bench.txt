@@ -1,0 +1,48 @@
+LineString above Polygon
+                        time:   [6.7273 ns 6.7638 ns 6.8032 ns]
+                        change: [-76.687% -76.472% -76.224%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 7 outliers among 100 measurements (7.00%)
+  3 (3.00%) high mild
+  4 (4.00%) high severe
+
+LineString above Triangle
+                        time:   [6.3777 ns 6.3983 ns 6.4199 ns]
+                        change: [-75.929% -75.859% -75.783%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 2 outliers among 100 measurements (2.00%)
+  1 (1.00%) low mild
+  1 (1.00%) high severe
+
+LineString around Rectangle
+                        time:   [1.7265 ns 1.7281 ns 1.7297 ns]
+                        change: [-93.421% -93.400% -93.375%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 3 outliers among 100 measurements (3.00%)
+  1 (1.00%) low mild
+  2 (2.00%) high severe
+
+long disjoint           time:   [2.9549 µs 2.9574 µs 2.9604 µs]
+                        change: [-99.896% -99.896% -99.896%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 11 outliers among 100 measurements (11.00%)
+  3 (3.00%) high mild
+  8 (8.00%) high severe
+
+ls within poly          time:   [7.3570 ns 7.4373 ns 7.5166 ns]
+                        change: [-6.3404% -5.1643% -4.1098%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 2 outliers among 100 measurements (2.00%)
+  2 (2.00%) high mild
+
+ls within rect          time:   [1.9871 ns 1.9947 ns 2.0046 ns]
+                        change: [-10.891% -10.507% -10.028%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 12 outliers among 100 measurements (12.00%)
+  8 (8.00%) high mild
+  4 (4.00%) high severe
+
+MultiPolygon intersects time:   [37.187 ms 37.433 ms 37.566 ms]
+                        change: [-55.067% -54.705% -54.392%] (p = 0.00 < 0.05)
+                        Performance has improved.
+
