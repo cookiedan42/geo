@@ -251,6 +251,8 @@ impl<C: CoordNum> HasDimensions for Polygon<C> {
             return Dimensions::OneDimensional;
         };
 
+        // all pts collinear is treated as TwoDimensional
+        // zero area polygon is treated as TwoDimensional
         Dimensions::TwoDimensional
     }
 

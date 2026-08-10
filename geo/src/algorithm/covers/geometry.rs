@@ -1,17 +1,18 @@
 use super::Covers;
-use crate::GeoFloat;
+use super::impl_covers_geometry_for;
+use crate::CoordsIter;
+use crate::HasDimensions;
+use crate::Intersects;
+use crate::covers::impl_covers_from_intersects;
 use crate::geometry::*;
 use crate::geometry_delegate_impl;
+use crate::{GeoFloat, GeoNum};
 
-impl<T> Covers<Point<T>> for Geometry<T>
-where
-    T: GeoFloat,
-{
-    geometry_delegate_impl! {
-        fn covers(&self, point: &Point<T>) -> bool;
-    }
-}
+// GeoNum Implementations
+impl_covers_from_intersects!(coord: Geometry<T>);
+impl_covers_from_intersects!(Geometry<T>, [Point<T>]);
 
+// GeoFloat Implementations
 impl<T> Covers<Line<T>> for Geometry<T>
 where
     T: GeoFloat,
@@ -97,7 +98,33 @@ impl<T> Covers<Geometry<T>> for Geometry<T>
 where
     T: GeoFloat,
 {
-    geometry_delegate_impl! {
-        fn covers(&self, other: &Geometry<T>) -> bool;
+    fn covers(&self, other: &Geometry<T>) -> bool {
+        match other {
+            Geometry::Point(geom) => self.covers(geom),
+            Geometry::Line(geom) => self.covers(geom),
+            Geometry::LineString(geom) => self.covers(geom),
+            Geometry::Polygon(geom) => self.covers(geom),
+            Geometry::MultiPoint(geom) => self.covers(geom),
+            Geometry::MultiLineString(geom) => self.covers(geom),
+            Geometry::MultiPolygon(geom) => self.covers(geom),
+            Geometry::GeometryCollection(geom) => self.covers(geom),
+            Geometry::Rect(geom) => self.covers(geom),
+            Geometry::Triangle(geom) => self.covers(geom),
+        }
     }
 }
+
+impl_covers_geometry_for!(Coord<T>);
+impl_covers_geometry_for!(Point<T>);
+impl_covers_geometry_for!(MultiPoint<T>);
+
+impl_covers_geometry_for!(Line<T>);
+impl_covers_geometry_for!(LineString<T>);
+impl_covers_geometry_for!(MultiLineString<T>);
+
+impl_covers_geometry_for!(Rect<T>);
+impl_covers_geometry_for!(Triangle<T>);
+impl_covers_geometry_for!(Polygon<T>);
+impl_covers_geometry_for!(MultiPolygon<T>);
+
+impl_covers_geometry_for!(GeometryCollection<T>);

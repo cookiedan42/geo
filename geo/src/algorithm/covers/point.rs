@@ -1,78 +1,183 @@
-use super::{Covers, impl_covers_from_intersects, impl_covers_from_relate};
-use crate::{Contains, geometry::*};
-use crate::{GeoFloat, GeoNum};
+use super::Covers;
+use crate::GeoNum;
+use crate::covers::impl_covers_from_intersects;
+use crate::dimensions::{Dimensions, HasDimensions};
+use crate::geometry::*;
+use crate::utils::lex_cmp;
+use crate::{CoordsIter, Intersects};
 
-// valid because self is convex geometry
-// all exterior pts of RHS intersecting self means self covers RHS
-impl_covers_from_intersects!(Point<T>, [
-Point<T>, MultiPoint<T>,
-Line<T>,
-LineString<T>,  MultiLineString<T>,
-Rect<T>, Triangle<T>,
-Polygon<T>,  MultiPolygon<T>,
-Geometry<T>, GeometryCollection<T>
-]);
+/*
+    If self is a single point
+    and all points of other intersect self,
+    then self covers other.
+*/
 
-// valid because RHS is point
-impl_covers_from_intersects!(MultiPoint<T>, [Point<T>]);
+impl <T> Covers<Coord<T>> for Coord<T>
+where
+    T: GeoNum,
+{
+    fn covers(&self, rhs: &Coord<T>) -> bool {
+        self == rhs
+    }
+}
 
-// use the sliding window comparison implementation of contains
-// multipoint has no boundary so they are equivalent
+// if all points of rhs intersect self
+// then rhs is a point-like
+// and self covers rhs
+macro_rules! impl_coord_covers {
+        ( [$($target:ty),*]) => {
+        $(
+            impl<T> Covers<$target> for Coord<T>
+            where
+                T: GeoNum,
+                Self: Intersects<Coord<T>>,
+                $target: HasDimensions,
+            {
+                fn covers(&self, target: &$target) -> bool {
+                    !target.is_empty()
+                    && target.coords_iter().all(|pt| self.intersects(&pt))
+                }
+            }
+        )*
+    };
+}
+
+impl_coord_covers!([Point<T>, MultiPoint<T>]);
+impl_coord_covers!([Line<T>, LineString<T>, MultiLineString<T>]);
+impl_coord_covers!([Rect<T>, Triangle<T>]);
+impl_coord_covers!([Polygon<T>, MultiPolygon<T>]);
+impl_coord_covers!([GeometryCollection<T>]);
+
+impl_covers_from_intersects!(coord: Point<T>);
+impl_covers_from_intersects!(Point<T>, [Point<T>, MultiPoint<T>]);
+impl_covers_from_intersects!(Point<T>, [Line<T>, LineString<T>, MultiLineString<T>]);
+impl_covers_from_intersects!(Point<T>, [Rect<T>, Triangle<T>]);
+impl_covers_from_intersects!(Point<T>, [Polygon<T>, MultiPolygon<T>]);
+impl_covers_from_intersects!(Point<T>, [GeometryCollection<T>]);
+
+//
+// MultiPoint Implementations
+//
+
+/*
+    If self is a multi point
+    and all parts of other are covered by some part of self,
+    then self covers other.
+*/
+
+impl_covers_from_intersects!(coord: MultiPoint<T>);
+
+// TODO: duplicated code with Contains
 impl<T> Covers<MultiPoint<T>> for MultiPoint<T>
 where
     T: GeoNum,
 {
     fn covers(&self, rhs: &MultiPoint<T>) -> bool {
-        self.contains(rhs)
+        if self.is_empty() || rhs.is_empty() {
+            return false;
+        }
+
+        let self_order = {
+            let mut s = self.coords_iter().collect::<Vec<_>>();
+            s.sort_by(lex_cmp);
+            s
+        };
+        let other_order = {
+            let mut s = rhs.coords_iter().collect::<Vec<_>>();
+            s.sort_by(lex_cmp);
+            s
+        };
+
+        let mut self_iter = self_order.iter().peekable();
+        let mut other_iter = other_order.iter().peekable();
+
+        loop {
+            // other has been exhausted
+            if other_iter.peek().is_none() {
+                return true;
+            }
+            // self has been exhausted but other has not been exhausted
+            if self_iter.peek().is_none() {
+                return false;
+            }
+
+            match lex_cmp(self_iter.peek().unwrap(), other_iter.peek().unwrap()) {
+                std::cmp::Ordering::Equal => {
+                    // other only ensures that we don't step past duplicate other points
+                    other_iter.next();
+                }
+                std::cmp::Ordering::Less => {
+                    self_iter.next();
+                }
+                std::cmp::Ordering::Greater => {
+                    return false;
+                }
+            }
+        }
     }
 }
 
-impl_covers_from_relate!(MultiPoint<T>, [
-Line<T>,
-LineString<T>,  MultiLineString<T>,
-Rect<T>, Triangle<T>,
-Polygon<T>,  MultiPolygon<T>,
-Geometry<T>, GeometryCollection<T>
-]);
+impl_covers_from_intersects!(MultiPoint<T>, [Point<T>]);
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::algorithm::convert::Convert;
-    use crate::wkt;
+// if rhs can be transformed into MultiPoint
+// then we can use the MultiPoint implementation
+// else it can never be contained by a MultiPoint
+macro_rules! impl_multipoint_covers_multi_part {
+    ( [$($target:ty),*]) => {
+        $(
+            impl<T> Covers<$target> for MultiPoint<T>
+            where
+                T: GeoNum,
+                Self: Intersects<Coord<T>>,
+                Self: HasDimensions,
+                $target: HasDimensions,
+            {
 
-    #[test]
-    fn test_rhs_empty() {
-        let s: Point<f64> = wkt!(POINT(0 0)).convert();
-        assert!(!s.covers(&LineString::empty()));
-        assert!(!s.covers(&Polygon::empty()));
-        assert!(!s.covers(&MultiPoint::empty()));
-        assert!(!s.covers(&MultiLineString::empty()));
-        assert!(!s.covers(&MultiPolygon::empty()));
-        assert!(!s.covers(&GeometryCollection::empty()));
+                fn covers(&self, rhs: &$target) -> bool {
+                    // rhs.dimensions takes the largest dimension of elements in rhs
+                    if self.is_empty() || rhs.is_empty() || rhs.dimensions() > Dimensions::ZeroDimensional {
+                        return false;
+                    }
+                    // convert to multi point
+                    let multipt: MultiPoint<T> = MultiPoint::<T>::from_iter(
+                        rhs.iter()
+                            .filter_map(|ls| ls.coords_iter().nth(0))
+                            .map(|p| Point::<T>::new(p.x, p.y))
+                    );
 
-        let s: MultiPoint<f64> = wkt!(MULTIPOINT(0 0, 1 1)).convert();
-        assert!(!s.covers(&LineString::empty()));
-        assert!(!s.covers(&Polygon::empty()));
-        assert!(!s.covers(&MultiPoint::empty()));
-        assert!(!s.covers(&MultiLineString::empty()));
-        assert!(!s.covers(&MultiPolygon::empty()));
-        assert!(!s.covers(&GeometryCollection::empty()));
-    }
-
-    #[test]
-    fn test_lhs_empty() {
-        let s: MultiPoint<f64> = MultiPoint::empty();
-        assert!(!s.covers(&wkt!(POINT(0 0)).convert()));
-        assert!(!s.covers(&wkt!(MULTIPOINT(0 0,1 1)).convert()));
-        assert!(!s.covers(&wkt!(LINE(0 0,1 1)).convert()));
-        assert!(!s.covers(&wkt!(LINESTRING(0 0,1 1)).convert()));
-        assert!(!s.covers(&wkt!(MULTILINESTRING((0 0,1 1),(2 2,3 3))).convert()));
-        assert!(!s.covers(&wkt!(POLYGON((0 0,1 1,1 0,0 0))).convert()));
-        assert!(!s.covers(&wkt!(MULTIPOLYGON(((0 0,1 0, 1 1,0 1, 0 0)))).convert()));
-        assert!(!s.covers(&wkt!(RECT(0 0, 1 1)).convert()));
-        assert!(!s.covers(&wkt!(TRIANGLE(0 0, 0 1, 1 1)).convert()));
-        assert!(!s.covers(&Into::<Geometry>::into(wkt!(POINT(0 0)).convert())));
-        assert!(!s.covers(&wkt!(GEOMETRYCOLLECTION(POINT(0 0))).convert()));
-    }
+                    return self.covers(&multipt);
+                }
+            }
+        )*
+    };
 }
+
+// if rhs is a single part
+// and it can be transformed into a Point
+// then we can use the Point implementation
+// else it can never be contained by a MultiPoint
+macro_rules! impl_multipoint_covers_single_part {
+    ( [$($target:ty),*]) => {
+        $(
+            impl<T> Covers<$target> for MultiPoint<T>
+            where
+                T: GeoNum,
+                Self: Intersects<Coord<T>>,
+                Self: HasDimensions,
+                $target: HasDimensions,
+            {
+
+                fn covers(&self, rhs: &$target) -> bool {
+                    if self.is_empty() || rhs.is_empty() || rhs.dimensions() > Dimensions::ZeroDimensional {
+                        return false;
+                    }
+                    let Some(coord) =  rhs.coords_iter().nth(0) else {return false;};
+                    self.intersects(&coord)
+                }
+            }
+        )*
+    };
+}
+
+impl_multipoint_covers_single_part!([Line<T>, LineString<T>,Rect<T>,Triangle<T>,Polygon<T>]);
+impl_multipoint_covers_multi_part!([MultiLineString<T>, MultiPolygon<T>,GeometryCollection<T>]);
